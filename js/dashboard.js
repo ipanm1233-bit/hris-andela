@@ -17,26 +17,31 @@ const db = getFirestore(app);
 document.addEventListener("DOMContentLoaded", async () => {
     
     // ==========================================
-    // 1. LOGIKA UI: SIDEBAR (DESKTOP & MOBILE)
+    // 1. LOGIKA UI: SIDEBAR (TOGGLE LEBAR)
     // ==========================================
     const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
     const overlay = document.getElementById('sidebarOverlay');
     const btnToggle = document.getElementById('btnToggleSidebar');
-    const btnCloseMobile = document.getElementById('btnCloseSidebarMobile');
 
     function toggleSidebar() {
-        // Untuk Mobile: Munculkan/Sembunyikan panel & overlay
-        sidebar.classList.toggle('-translate-x-full');
-        overlay.classList.toggle('hidden');
-        
-        // Untuk Desktop: Hilangkan paksaan lebar margin dan tampilannya
-        sidebar.classList.toggle('lg:translate-x-0');
-        mainContent.classList.toggle('lg:ml-64');
+        // Logika untuk Mobile (di bawah 1024px)
+        if (window.innerWidth < 1024) {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        } 
+        // Logika untuk Desktop (Sembunyikan ke kiri dengan lebar 0)
+        else {
+            if (sidebar.classList.contains('lg:w-0')) {
+                sidebar.classList.remove('lg:w-0', 'px-0', 'opacity-0');
+                sidebar.classList.add('w-64');
+            } else {
+                sidebar.classList.add('lg:w-0', 'px-0', 'opacity-0');
+                sidebar.classList.remove('w-64');
+            }
+        }
     }
 
     btnToggle.addEventListener('click', toggleSidebar);
-    if(btnCloseMobile) btnCloseMobile.addEventListener('click', toggleSidebar);
     if(overlay) overlay.addEventListener('click', toggleSidebar);
 
     // ==========================================
@@ -45,19 +50,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const menuToggles = document.querySelectorAll('.menu-toggle');
     menuToggles.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Tutup menu lain yang sedang terbuka (Opsional, agar rapi)
-            menuToggles.forEach(otherBtn => {
-                if (otherBtn !== btn) {
-                    otherBtn.nextElementSibling.classList.add('hidden');
-                    otherBtn.querySelector('.chevron').classList.remove('rotate-180');
-                }
-            });
-
-            // Buka/Tutup menu yang diklik
             const submenu = btn.nextElementSibling;
             const chevron = btn.querySelector('.chevron');
             
             submenu.classList.toggle('hidden');
+            submenu.classList.toggle('flex');
             chevron.classList.toggle('rotate-180');
         });
     });
@@ -82,17 +79,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             const namaLengkap = dataPegawai.Nama || "Tanpa Nama";
             
             document.getElementById("userNameDisplay").innerText = namaLengkap;
-            document.getElementById("userAvatar").innerText = namaLengkap.charAt(0).toUpperCase();
             
+            // Format Nama Singkat untuk Avatar (Maks 2 huruf)
+            const inisial = namaLengkap.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.getElementById("userAvatar").innerText = inisial;
+            
+            // Sisa Cuti
             const sisaCuti = (dataPegawai.SisaCutiTahunan || 0) - (dataPegawai.TerpakaiTahunan || 0);
             document.getElementById("cutiDisplay").innerText = sisaCuti;
             
         } else {
-            document.getElementById("userNameDisplay").innerText = "Data Karyawan Tidak Ditemukan";
+            document.getElementById("userNameDisplay").innerText = "Data Kosong";
         }
     } catch (error) {
-        document.getElementById("userNameDisplay").innerText = "Error Jaringan";
-        console.error("Gagal menarik data dari Firestore:", error);
+        document.getElementById("userNameDisplay").innerText = "Error Data";
+        console.error("Gagal menarik profil:", error);
     }
 
     // ==========================================
