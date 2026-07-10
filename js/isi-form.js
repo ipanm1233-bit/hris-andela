@@ -79,40 +79,48 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // Mesin Render Input Dinamis
             let detailFields = [];
-            try {
-                detailFields = typeof currentFormConfig.DetailJSON === "string"
-                    ? JSON.parse(currentFormConfig.DetailJSON || "[]")
-                    : (currentFormConfig.DetailJSON || []);
-            } catch (e) { console.error("Gagal mem-parsing DetailJSON", e); }
-
-            if (detailFields.length === 0) {
-                renderArea.innerHTML = `<p class="text-red-500 italic">Skema inputan belum diatur oleh HRD untuk form ini.</p>`;
-            } else {
-                renderArea.innerHTML = ""; // Bersihkan
-                
+            const rawDetail = currentFormConfig.DetailJSON;
+            
+            if (typeof rawDetail === 'string') {
+                try {
+                    detailFields = JSON.parse(rawDetail);
+                } catch (e) {
+                    console.error("Gagal mem-parsing JSON String:", e);
+                    // Coba perbaikan jika string mengandung escape character yang salah
+                    try {
+                        detailFields = JSON.parse(rawDetail.replace(/\\"/g, '"').replace(/^"|"$/g, ''));
+                    } catch(e2) {
+                        renderArea.innerHTML = `<p class="text-red-500 italic">Format JSON tidak valid di database.</p>`;
+                    }
+                }
+            } else if (Array.isArray(rawDetail)) {
+                detailFields = rawDetail; // Sudah array
+            } else if (typeof rawDetail === 'object' && rawDetail !== null) {
+                // Jika tersimpan sebagai objek, kita jadikan array
+                detailFields = Object.values(rawDetail);
+            }
+            
+            // Lanjutkan proses render jika detailFields sudah terisi
+            if (detailFields.length > 0) {
+                renderArea.innerHTML = ""; 
                 detailFields.forEach((field, index) => {
+                    // ... (kode rendering input tetap sama seperti sebelumnya)
                     const reqStar = field.required ? '<span class="text-red-500 ml-1">*</span>' : '';
                     const fieldId = `input_${index}`;
                     let inputHtml = '';
-
-                    // Logika tipe-tipe input
+            
                     if (field.type === "textarea") {
-                        inputHtml = `<textarea id="${fieldId}" name="${field.label}" ${field.required ? 'required' : ''} rows="3" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:outline-none transition"></textarea>`;
+                        inputHtml = `<textarea id="${fieldId}" name="${field.label}" ${field.required ? 'required' : ''} class="w-full px-4 py-3 rounded-lg border border-gray-300"></textarea>`;
                     } else if (field.type === "select") {
-                        const options = (field.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('');
-                        inputHtml = `<select id="${fieldId}" name="${field.label}" ${field.required ? 'required' : ''} class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:outline-none transition"><option value="">-- Pilih --</option>${options}</select>`;
+                        // Pastikan options ada dan array
+                        const opts = Array.isArray(field.options) ? field.options : [];
+                        const options = opts.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+                        inputHtml = `<select id="${fieldId}" name="${field.label}" class="w-full px-4 py-3 rounded-lg border border-gray-300"><option value="">-- Pilih --</option>${options}</select>`;
                     } else {
-                        // Untuk text, date, number, dll
-                        inputHtml = `<input type="${field.type || 'text'}" id="${fieldId}" name="${field.label}" ${field.required ? 'required' : ''} class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:outline-none transition">`;
+                        inputHtml = `<input type="${field.type || 'text'}" id="${fieldId}" name="${field.label}" class="w-full px-4 py-3 rounded-lg border border-gray-300">`;
                     }
-
-                    const wrapHtml = `
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">${field.label} ${reqStar}</label>
-                            ${inputHtml}
-                        </div>
-                    `;
-                    renderArea.insertAdjacentHTML("beforeend", wrapHtml);
+                    
+                    renderArea.insertAdjacentHTML("beforeend", `<div><label class="block text-sm font-bold text-gray-700 mb-1">${field.label} ${reqStar}</label>${inputHtml}</div>`);
                 });
             }
 
