@@ -149,3 +149,60 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 });
+
+// ==========================================
+    // 4. LOGIKA PENGATURAN AKUN KARYAWAN
+    // ==========================================
+    import { updateDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+    
+    const btnPengaturan = document.getElementById("btnPengaturanAkun");
+    const modalAkun = document.getElementById("modalAkun");
+    const btnTutup = document.getElementById("btnTutupModal");
+    const btnSimpan = document.getElementById("btnSimpanAkun");
+
+    if(btnPengaturan) {
+        btnPengaturan.addEventListener("click", () => {
+            modalAkun.classList.remove("hidden");
+            modalAkun.children[0].classList.replace("scale-95", "scale-100"); // Efek pop-up
+        });
+    }
+
+    if(btnTutup) {
+        btnTutup.addEventListener("click", () => {
+            modalAkun.classList.add("hidden");
+            modalAkun.children[0].classList.replace("scale-100", "scale-95");
+        });
+    }
+
+    if(btnSimpan) {
+        btnSimpan.addEventListener("click", async () => {
+            const newUname = document.getElementById("newUsername").value.trim().toUpperCase();
+            const newPass = document.getElementById("newPassword").value.trim();
+            const docIDAkun = localStorage.getItem("accountDocID");
+
+            if(!newUname || !newPass) {
+                alert("Semua kolom harus diisi!");
+                return;
+            }
+
+            btnSimpan.innerText = "Menyimpan...";
+            
+            try {
+                // Update dokumen di Firestore
+                const akunRef = doc(db, "user_accounts", docIDAkun);
+                await updateDoc(akunRef, {
+                    Username: newUname,
+                    Password: newPass
+                });
+
+                alert("Akun berhasil diperbarui! Silakan gunakan kredensial baru pada login berikutnya.");
+                modalAkun.classList.add("hidden");
+                btnSimpan.innerText = "Simpan Perubahan";
+                
+            } catch (error) {
+                console.error(error);
+                alert("Gagal mengubah akun. Pastikan Anda terhubung ke internet.");
+                btnSimpan.innerText = "Simpan Perubahan";
+            }
+        });
+    }
