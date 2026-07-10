@@ -48,6 +48,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
+    // ==========================================
+    // LOGIKA SAKTI: HAK AKSES MENU (RBAC)
+    // ==========================================
+    const role = (localStorage.getItem("userRole") || "").toUpperCase();
+    const jabatan = (localStorage.getItem("userJabatan") || "").toUpperCase();
+    const isAtasan = localStorage.getItem("isAtasan") === "YES";
+
+    // Analisa wewenang
+    const isHRD = role.includes("HRD") || jabatan.includes("HR");
+    const isFinance = role.includes("FINANCE") || role.includes("CASHIER") || jabatan.includes("FINANCE");
+    const isManajerial = role.includes("GM") || role.includes("SPV") || jabatan.includes("MANAGER") || jabatan.includes("SUPERVISOR");
+
+    // Eksekusi buka menu
+    if (isHRD) {
+        // HRD: Buka semua level
+        document.getElementById("menu-manajerial").classList.remove("hidden");
+        document.getElementById("menu-hrd").classList.remove("hidden");
+    } else if (isFinance || isManajerial || isAtasan) {
+        // Atasan/SPV/Finance: Buka menu manajerial saja
+        document.getElementById("menu-manajerial").classList.remove("hidden");
+    }
+    // (Jika Karyawan biasa, menu yang tampil hanya 'menu-all' yang memang tidak kita hidden)
+
     try {
         // --- A. Render Profil Karyawan ---
         const docRef = doc(db, "master_karyawan", userNIK);
