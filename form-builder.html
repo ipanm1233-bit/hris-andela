@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Builder - HRIS Andela Jaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9b1c1c; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-800 h-screen flex flex-col overflow-hidden relative">
+
+    <header class="h-16 bg-white shadow-sm flex items-center justify-between px-4 lg:px-6 z-40 border-b border-gray-200 w-full shrink-0 relative">
+        <div class="flex items-center">
+            <div class="flex items-center text-red-700 w-48 lg:w-56 shrink-0">
+                <h1 class="text-xl font-extrabold tracking-tight">ANDELA<span class="text-red-400">JAYA</span></h1>
+            </div>
+            <button id="btnToggleSidebar" class="p-2 text-gray-600 hover:text-red-600 rounded transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+            <div class="hidden md:flex ml-6 text-gray-400 items-center border-l pl-6 border-gray-200">
+                <span class="font-bold text-gray-800 tracking-tight">Mesin Form Builder</span>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button id="btnSuntikISO" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-1.5 px-3 rounded text-xs border border-red-200 transition">
+                🚀 Generate Default Form ISO
+            </button>
+            <div class="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold border-2 border-red-200">HR</div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative w-full">
+        <aside id="sidebar" class="bg-red-700 text-white flex flex-col absolute inset-y-0 left-0 z-30 lg:relative w-64 border-r border-red-800 transition-transform transform -translate-x-full lg:translate-x-0">
+            <nav class="flex-1 overflow-y-auto py-2 custom-scrollbar">
+                <a href="dashboard.html" class="flex items-center px-6 py-3 text-red-100 hover:bg-red-600 transition text-sm">Dashboard</a>
+                <a href="pengajuan.html" class="flex items-center px-6 py-3 text-red-100 hover:bg-red-600 transition text-sm">Buat Pengajuan</a>
+                <div class="px-6 py-3 mt-2 border-t border-red-800"><p class="text-[10px] font-bold text-red-300 uppercase tracking-wider">Administrator HRD</p></div>
+                <a href="form-builder.html" class="flex items-center px-6 py-3 bg-red-800 border-l-4 border-white font-semibold text-sm">Form Builder</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-8 w-full flex justify-center">
+            
+            <div class="w-full max-w-4xl bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                <div class="border-b border-gray-200 pb-4 mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-gray-800">Rakit Formulir Baru</h2>
+                        <p class="text-sm text-gray-500">Tentukan identitas form, alur persetujuan, dan kolom input yang dibutuhkan.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Form (Unik)</label>
+                            <input type="text" id="fbIdForm" class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-red-500 uppercase" placeholder="Contoh: F-HR-04">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Formulir</label>
+                            <input type="text" id="fbNamaForm" class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-red-500" placeholder="Contoh: Form Peminjaman Aset">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tipe Kategori Form</label>
+                            <input type="text" id="fbTipeForm" class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-red-500 uppercase" placeholder="Contoh: ASET, CUTI, DINAS">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Alur Persetujuan (Approval Flow)</label>
+                            <input type="text" id="fbApproval" class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-red-500 uppercase" placeholder="Contoh: ATASAN, HRD, FINANCE">
+                            <p class="text-[10px] text-gray-400 mt-1">Pisahkan dengan koma.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">Skema Kolom Input</h3>
+                            <button id="btnTambahKolom" class="bg-gray-800 hover:bg-gray-900 text-white text-xs px-3 py-1.5 rounded font-bold transition">+ Tambah Kolom</button>
+                        </div>
+                        
+                        <div id="kolomContainer" class="space-y-3">
+                            </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-200 flex justify-end">
+                        <button id="btnSimpanForm" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-all">Simpan ke Database Formulir</button>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script type="module" src="./js/form-builder.js"></script>
+</body>
+</html>
