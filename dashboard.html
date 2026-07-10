@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard HRIS - CV Andela Jaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans antialiased flex h-screen overflow-hidden">
+
+    <!-- Sidebar (Merah) -->
+    <aside class="w-64 bg-red-700 text-white flex flex-col shadow-xl">
+        <div class="h-16 flex items-center justify-center border-b border-red-600">
+            <h1 class="text-2xl font-extrabold tracking-wider">ANDELA<span class="text-gray-300">HRIS</span></h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <a href="#" class="block px-4 py-3 bg-red-800 rounded-lg font-semibold transition">🏠 Dashboard</a>
+            <a href="#" class="block px-4 py-3 hover:bg-red-600 rounded-lg transition">📁 Pengajuan Form</a>
+            <a href="#" class="block px-4 py-3 hover:bg-red-600 rounded-lg transition">👥 Data Karyawan</a>
+            <a href="#" class="block px-4 py-3 hover:bg-red-600 rounded-lg transition">📊 Penilaian KPI</a>
+            <a href="#" class="block px-4 py-3 hover:bg-red-600 rounded-lg transition">📦 Inventory ERP</a>
+        </nav>
+        <div class="p-4 border-t border-red-600">
+            <button id="btnLogout" class="w-full bg-white text-red-700 font-bold py-2 rounded shadow hover:bg-gray-100 transition">
+                Keluar
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-y-auto">
+        <!-- Header (Putih) -->
+        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8">
+            <h2 class="text-xl font-semibold text-gray-800">Ringkasan Operasional</h2>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-500">Selamat datang,</span>
+                <span id="userNameDisplay" class="font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">Memuat...</span>
+            </div>
+        </header>
+
+        <!-- Dashboard Widgets -->
+        <div class="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Widget 1: Sisa Cuti -->
+            <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500 hover:shadow-lg transition">
+                <h3 class="text-gray-500 text-sm font-semibold mb-1">Sisa Cuti Tahunan</h3>
+                <p id="cutiDisplay" class="text-3xl font-bold text-gray-800">-- <span class="text-sm font-normal text-gray-500">Hari</span></p>
+            </div>
+
+            <!-- Widget 2: Pengumuman -->
+            <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500 hover:shadow-lg transition">
+                <h3 class="text-gray-500 text-sm font-semibold mb-1">Pengumuman Terbaru</h3>
+                <p class="text-lg font-bold text-gray-800">SOP Reimbursement Baru</p>
+                <p class="text-xs text-gray-400 mt-2">Diterbitkan oleh HRD</p>
+            </div>
+
+            <!-- Widget 3: Status Kontrak -->
+            <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500 hover:shadow-lg transition">
+                <h3 class="text-gray-500 text-sm font-semibold mb-1">Status Kontrak Anda</h3>
+                <p id="kontrakDisplay" class="text-lg font-bold text-gray-800">Aman</p>
+                <p class="text-xs text-gray-400 mt-2">Masih lebih dari 45 Hari</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Panggil Script Dashboard -->
+    <script type="module" src="./js/dashboard.js"></script>
+</body>
+</html>
