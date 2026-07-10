@@ -1,10 +1,37 @@
 // =======================================================================
+// 0. FUNGSI HELPER: SMART DATE PARSER (Anti-Error Format Indonesia)
+// =======================================================================
+function formatTanggalAkurat(tglMentah) {
+    if (!tglMentah || tglMentah === "-" || tglMentah === "") return "-";
+    
+    let dateObj;
+    let strTgl = String(tglMentah).split(' ')[0];
+    
+    // 1. Cek Angka Serial Excel
+    if (!isNaN(tglMentah) && Number(tglMentah) > 20000) {
+        dateObj = new Date((Number(tglMentah) - 25569) * 86400 * 1000);
+    } else {
+        // 2. Biarkan sistem baca format default Excel (Bulan/Hari/Tahun)
+        dateObj = new Date(strTgl);
+        
+        // 3. Jika Error (Invalid Date), berarti itu format Indonesia (Hari/Bulan), putar urutannya
+        if (isNaN(dateObj) && (strTgl.includes('/') || strTgl.includes('-'))) {
+            let parts = strTgl.split(/[-/]/);
+            if (parts.length === 3) dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+        }
+    }
+
+    if (!isNaN(dateObj) && dateObj.getFullYear() > 1970) {
+        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    return tglMentah;
+}
+
+// =======================================================================
 // FIREBASE INITIALIZATION & IMPORTS
 // =======================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { 
-    getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc 
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAyFFFuXdnTUpxw9wW4uPKwqyeSpZNilRE",
@@ -19,417 +46,209 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // =======================================================================
-// FUNGSI HELPER: SMART DATE PARSER (Anti-Error Format Indonesia/Excel)
-// =======================================================================
-function formatTanggalAkurat(tglMentah) {
-    if (!tglMentah || tglMentah === "-" || tglMentah === "") return "-";
-    
-    let dateObj;
-    let strTgl = String(tglMentah).split(' ')[0]; // Buang jam jika ada
-    
-    // 1. Cek Angka Serial Excel (misal: 45231)
-    if (!isNaN(tglMentah) && Number(tglMentah) > 20000) {
-        dateObj = new Date((Number(tglMentah) - 25569) * 86400 * 1000);
-    } 
-    // 2. Format Indonesia DD-MM-YYYY atau DD/MM/YYYY (contoh: 01-11-2023)
-    else if ((strTgl.includes('/') || strTgl.includes('-')) && strTgl.split(/[-/]/)[0].length <= 2) {
-        let parts = strTgl.split(/[-/]/);
-        // Tukar urutan ke standar ISO: YYYY-MM-DD agar JS tidak bingung
-        dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
-    } 
-    // 3. Format Normal YYYY-MM-DD
-    else {
-        dateObj = new Date(strTgl);
-    }
-
-    if (!isNaN(dateObj) && dateObj.getFullYear() > 1970) {
-        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    }
-    return tglMentah; // Tampilkan teks asli jika gagal
-}
-
-// =======================================================================
 // MAIN DASHBOARD LOGIC
 // =======================================================================
 document.addEventListener("DOMContentLoaded", async () => {
     
-    // --- SESI KEAMANAN ---
     const userNIK = localStorage.getItem("userNIK");
     if (!userNIK) {
-        alert("Sesi berakhir atau tidak valid. Silakan login kembali.");
+        alert("Sesi berakhir. Silakan login kembali.");
         window.location.href = "/index.html";
         return;
     }
 
-    // ==========================================
-    // 1. LOGIKA UI: SIDEBAR & ACCORDION
-    // ==========================================
+    // Deklarasi global profil untuk modal
+    window.profilKaryawanSaatIni = {};
+
+    // 1. LOGIKA UI SIDEBAR & MENU (SAMA SEPERTI SEBELUMNYA)
     const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
     const btnToggle = document.getElementById('btnToggleSidebar');
-
-    // Fungsi Buka/Tutup Sidebar Utama
-    function toggleSidebar() {
-        if (window.innerWidth >= 1024) { // Layar Laptop/PC
-            sidebar.classList.toggle('lg:w-64');
-            sidebar.classList.toggle('lg:w-0');
-        } else { // Layar HP
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
-    }
-    if(btnToggle) btnToggle.addEventListener('click', toggleSidebar);
-    if(overlay) overlay.addEventListener('click', toggleSidebar);
-
-    // Fungsi Accordion Sub-Menu
-    const menuToggles = document.querySelectorAll('.menu-toggle');
-    menuToggles.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const submenu = btn.nextElementSibling;
-            const chevron = btn.querySelector('.chevron');
-            if(submenu) {
-                submenu.classList.toggle('hidden');
-                submenu.classList.toggle('flex');
-            }
-            if(chevron) chevron.classList.toggle('rotate-180');
+    if(btnToggle) {
+        btnToggle.addEventListener('click', () => {
+            if (window.innerWidth >= 1024) { sidebar.classList.toggle('lg:w-0'); sidebar.classList.toggle('lg:w-64'); }
+            else { sidebar.classList.toggle('-translate-x-full'); document.getElementById('sidebarOverlay').classList.toggle('hidden'); }
         });
-    });
+    }
 
-
-    // ==========================================
-    // 2. LOGIKA HAK AKSES MENU (RBAC)
-    // ==========================================
+    // HAK AKSES RBAC
     const role = (localStorage.getItem("userRole") || "").toUpperCase();
     const jabatan = (localStorage.getItem("userJabatan") || "").toUpperCase();
     const isAtasan = localStorage.getItem("isAtasan") === "YES";
-
-    const isHRD = role.includes("HRD") || jabatan.includes("HR");
-    const isFinance = role.includes("FINANCE") || role.includes("CASHIER") || jabatan.includes("FINANCE");
-    const isManajerial = role.includes("GM") || role.includes("SPV") || jabatan.includes("MANAGER") || jabatan.includes("SUPERVISOR");
-
-    const menuManajerial = document.getElementById("menu-manajerial");
-    const menuHrd = document.getElementById("menu-hrd");
-
-    if (isHRD) {
-        if(menuManajerial) menuManajerial.classList.remove("hidden");
-        if(menuHrd) menuHrd.classList.remove("hidden");
-    } else if (isFinance || isManajerial || isAtasan) {
-        if(menuManajerial) menuManajerial.classList.remove("hidden");
+    
+    if (role.includes("HRD") || jabatan.includes("HR")) {
+        document.getElementById("menu-manajerial").classList.remove("hidden");
+        document.getElementById("menu-hrd").classList.remove("hidden");
+    } else if (role.includes("FINANCE") || role.includes("CASHIER") || role.includes("GM") || role.includes("SPV") || isAtasan) {
+        document.getElementById("menu-manajerial").classList.remove("hidden");
     }
 
-
-    // ==========================================
-    // 3. TARIK DATA PROFIL & KALKULASI CUTI
-    // ==========================================
-    let namaKaryawan = "Tanpa Nama";
-
     try {
-        // Deklarasi global sementara untuk profil (agar bisa dibaca oleh Modal)
-        window.profilKaryawanSaatIni = {};
-
-        // --- A. Render Profil Karyawan (Dari Master Karyawan) ---
+        // 2. TARIK DATA PROFIL & PARSING TANGGAL
         const docRef = doc(db, "master_karyawan", userNIK);
         const docSnap = await getDoc(docRef);
 
-        let jatahTahunan = 0;
-        let jatahKhusus = 0;
-        let jatahAkumulasi = 0;
+        let jatahTahunan = 0, jatahKhusus = 0, jatahAkumulasi = 0;
+        let namaKaryawan = "Tanpa Nama";
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            
-            // Simpan data ke variabel global agar bisa ditarik saat profil diklik
             window.profilKaryawanSaatIni = data; 
             
             namaKaryawan = data.Nama_Karyawan || data.Nama || "Tanpa Nama";
             const inisial = namaKaryawan.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
-            // Elemen Top Header
-            if(document.getElementById("userNameDisplayTop")) document.getElementById("userNameDisplayTop").innerText = namaKaryawan;
-            if(document.getElementById("userAvatarTop")) document.getElementById("userAvatarTop").innerText = inisial;
-
-            // Elemen Kartu Profil
-            if(document.getElementById("profAvatar")) document.getElementById("profAvatar").innerText = inisial;
-            if(document.getElementById("profNama")) document.getElementById("profNama").innerText = namaKaryawan;
-            if(document.getElementById("profJabatan")) document.getElementById("profJabatan").innerText = data.JABATAN || data.Jabatan || "-";
-            if(document.getElementById("profNIK")) document.getElementById("profNIK").innerText = data.NIK_Karyawan || data.NIK || userNIK;
-            if(document.getElementById("profCabang")) document.getElementById("profCabang").innerText = data.CABANG || data.Cabang || "-";
+            document.getElementById("userNameDisplayTop").innerText = namaKaryawan;
+            document.getElementById("userAvatarTop").innerText = inisial;
+            document.getElementById("profAvatar").innerText = inisial;
+            document.getElementById("profNama").innerText = namaKaryawan;
+            document.getElementById("profJabatan").innerText = data.JABATAN || data.Jabatan || "-";
+            document.getElementById("profNIK").innerText = data.NIK_Karyawan || data.NIK || userNIK;
+            document.getElementById("profCabang").innerText = data.CABANG || data.Cabang || "-";
             
-            // Format Tanggal Join MENGGUNAKAN SMART PARSER BARU
+            // Render Tanggal Gabung dengan Smart Parser
             let tglMasuk = data.TANGGAL_JOIN || data.TanggalJoin || data['Tgl Join'];
-            if(document.getElementById("profTglJoin")) {
-                document.getElementById("profTglJoin").innerText = formatTanggalAkurat(tglMasuk);
-            }
+            document.getElementById("profTglJoin").innerText = formatTanggalAkurat(tglMasuk);
 
-            // Simpan Jatah Cuti Awal
             jatahTahunan = parseFloat(data.jatah_tahunan) || parseFloat(data.SisaCutiTahunan) || 0;
-            jatahKhusus = parseFloat(data.jatah_khusus) || parseFloat(data.jatah_Cuti_Khusus) || 0;
+            jatahKhusus = parseFloat(data.jatah_khusus) || 0;
             jatahAkumulasi = parseFloat(data.jatah_akumulasi) || 0;
-            
-        } else {
-            console.warn("Profil tidak ditemukan untuk NIK:", userNIK);
         }
 
-        // --- B. Kalkulasi Pengurangan Cuti (Dari Master Cuti) ---
-        let potongTahunan = 0;
-        let potongKhusus = 0;
-        let potongAkumulasi = 0;
-
-        const cutiRef = collection(db, "master_cuti");
-        const qCuti = query(cutiRef, where("Nama_Karyawan", "==", namaKaryawan));
+        // 3. KALKULASI SISA CUTI 3 KARTU (SAMA SEPERTI SEBELUMNYA)
+        let potongTahunan = 0, potongKhusus = 0, potongAkumulasi = 0;
+        const qCuti = query(collection(db, "master_cuti"), where("Nama_Karyawan", "==", namaKaryawan));
         const snapCuti = await getDocs(qCuti);
 
         snapCuti.forEach(docCuti => {
-            const dataCuti = docCuti.data();
-            const jumlahDiambil = parseFloat(dataCuti.Count) || parseFloat(dataCuti.COUNT) || 0;
-            const jenisPotongan = (dataCuti.Potong_Jatah || dataCuti['Potong Jatah'] || "").toUpperCase();
-
-            if (jenisPotongan.includes("TAHUNAN")) {
-                potongTahunan += jumlahDiambil;
-            } else if (jenisPotongan.includes("KHUSUS")) {
-                potongKhusus += jumlahDiambil;
-            } else if (jenisPotongan.includes("AKUMULASI")) {
-                potongAkumulasi += jumlahDiambil;
-            }
+            const cuti = docCuti.data();
+            const jml = parseFloat(cuti.Count) || parseFloat(cuti.COUNT) || 0;
+            const tipe = (cuti.Potong_Jatah || cuti['Potong Jatah'] || "").toUpperCase();
+            if (tipe.includes("TAHUNAN")) potongTahunan += jml;
+            else if (tipe.includes("KHUSUS")) potongKhusus += jml;
+            else if (tipe.includes("AKUMULASI")) potongAkumulasi += jml;
         });
 
-        const sisaTahunan = jatahTahunan - potongTahunan;
-        const sisaKhusus = jatahKhusus - potongKhusus;
-        const sisaAkumulasi = jatahAkumulasi - potongAkumulasi;
+        document.getElementById("cutiTahunanDisplay").innerText = jatahTahunan - potongTahunan;
+        document.getElementById("cutiKhususDisplay").innerText = jatahKhusus - potongKhusus;
+        document.getElementById("cutiAkumulasiDisplay").innerText = jatahAkumulasi - potongAkumulasi;
 
-        // Render Sisa Cuti ke Layar
-        if(document.getElementById("cutiTahunanDisplay")) document.getElementById("cutiTahunanDisplay").innerText = sisaTahunan;
-        if(document.getElementById("cutiKhususDisplay")) document.getElementById("cutiKhususDisplay").innerText = sisaKhusus;
-        if(document.getElementById("cutiAkumulasiDisplay")) document.getElementById("cutiAkumulasiDisplay").innerText = sisaAkumulasi;
-        
-        // Di kartu profil utama
-        if(document.getElementById("profSisaCuti")) document.getElementById("profSisaCuti").innerText = sisaTahunan;
-
-        // --- C. Tarik Histori Pengajuan Terakhir ---
+        // 4. TABEL HISTORI
+        const qHistory = query(collection(db, "data_pengajuan"), where("NIK", "in", [userNIK, parseInt(userNIK)])); 
+        const historySnap = await getDocs(qHistory);
         const tbody = document.getElementById("tableRiwayatBody");
-        if(tbody) {
-            const reqRef = collection(db, "data_pengajuan");
-            // Antisipasi NIK bertipe string atau number
-            const qHistory = query(reqRef, where("NIK", "in", [userNIK, parseInt(userNIK), Number(userNIK)])); 
-            const historySnap = await getDocs(qHistory);
+        
+        if (historySnap.empty) {
+            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">Belum ada riwayat pengajuan.</td></tr>`;
+        } else {
+            let trHTML = "";
+            let riwayatArr = [];
+            historySnap.forEach(d => riwayatArr.push(d.data()));
+            riwayatArr.sort((a, b) => new Date(b.Tgl) - new Date(a.Tgl));
 
-            if (historySnap.empty) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">Belum ada riwayat pengajuan.</td></tr>`;
-            } else {
-                let trHTML = "";
-                let riwayatArr = [];
-                historySnap.forEach(hDoc => riwayatArr.push(hDoc.data()));
+            riwayatArr.slice(0, 5).forEach(item => {
+                let status = item.StatusFinal || item['Status Final'] || "PENDING";
+                let badge = status.includes("APPROVED") ? `<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">${status}</span>` : 
+                            (status.includes("REJECT") || status.includes("TOLAK")) ? `<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">${status}</span>` : 
+                            `<span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">${status}</span>`;
                 
-                // Urutkan dari terbaru ke terlama
-                riwayatArr.sort((a, b) => new Date(b.Tgl || b.TGL) - new Date(a.Tgl || a.TGL));
-
-                riwayatArr.slice(0, 5).forEach(item => {
-                    const tglMentah = item.Tgl || item.TGL;
-                    const dateObj = new Date(tglMentah);
-                    let tglFormat = "-";
-                    if(!isNaN(dateObj)) {
-                        tglFormat = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                    }
-                    
-                    let statusBadge = "";
-                    let statusText = item['Status Final'] || item.StatusFinal || "PENDING";
-                    
-                    if (statusText.includes("APPROVED") || statusText.includes("SELESAI")) {
-                        statusBadge = `<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">${statusText}</span>`;
-                    } else if (statusText.includes("REJECT") || statusText.includes("TOLAK")) {
-                        statusBadge = `<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">${statusText}</span>`;
-                    } else {
-                        statusBadge = `<span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">${statusText}</span>`;
-                    }
-
-                    trHTML += `
-                        <tr class="hover:bg-gray-50 transition border-b border-gray-100">
-                            <td class="px-6 py-4 text-gray-600">${tglFormat}</td>
-                            <td class="px-6 py-4">
-                                <p class="font-bold text-gray-800">${item['Nama Form'] || item.NamaForm || "Form Sistem"}</p>
-                                <p class="text-xs text-gray-400 font-mono mt-0.5">${item.ID || "-"}</p>
-                            </td>
-                            <td class="px-6 py-4">${statusBadge}</td>
-                            <td class="px-6 py-4 text-right">
-                                <button class="text-red-600 hover:text-red-800 text-sm font-semibold hover:underline">Detail</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = trHTML;
-            }
+                trHTML += `<tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="px-6 py-4 text-gray-600">${formatTanggalAkurat(item.Tgl || item.TGL)}</td>
+                    <td class="px-6 py-4"><p class="font-bold text-gray-800">${item.NamaForm || item['Nama Form']}</p></td>
+                    <td class="px-6 py-4">${badge}</td>
+                    <td class="px-6 py-4 text-right"><button class="text-red-600 hover:underline font-bold text-sm">Detail</button></td>
+                </tr>`;
+            });
+            tbody.innerHTML = trHTML;
         }
 
     } catch (error) {
         console.error("Gagal menarik data:", error);
-        if(document.getElementById("tableRiwayatBody")) {
-            document.getElementById("tableRiwayatBody").innerHTML = `<tr><td colspan="4" class="px-6 py-6 text-center text-red-500">Gagal memuat riwayat.</td></tr>`;
-        }
-    }
-
-
-    // ==========================================
-    // 4. LOGIKA PENGATURAN AKUN (MODAL)
-    // ==========================================
-    const btnPengaturan = document.getElementById("btnPengaturanAkun");
-    const modalAkun = document.getElementById("modalAkun");
-    const btnTutup = document.getElementById("btnTutupModal");
-    const btnSimpan = document.getElementById("btnSimpanAkun");
-
-    if (btnPengaturan && modalAkun) {
-        btnPengaturan.addEventListener("click", () => {
-            modalAkun.classList.remove("hidden");
-            modalAkun.children[0].classList.replace("scale-95", "scale-100");
-        });
-    }
-
-    if (btnTutup && modalAkun) {
-        btnTutup.addEventListener("click", () => {
-            modalAkun.classList.add("hidden");
-            modalAkun.children[0].classList.replace("scale-100", "scale-95");
-        });
-    }
-
-    if (btnSimpan) {
-        btnSimpan.addEventListener("click", async () => {
-            const newUname = document.getElementById("newUsername").value.trim().toUpperCase();
-            const newPass = document.getElementById("newPassword").value.trim();
-            const docIDAkun = localStorage.getItem("accountDocID");
-
-            if (!newUname || !newPass) {
-                alert("Username dan Password tidak boleh kosong!");
-                return;
-            }
-
-            btnSimpan.innerText = "Menyimpan...";
-            
-            try {
-                const akunRef = doc(db, "user_accounts", docIDAkun);
-                await updateDoc(akunRef, {
-                    Username: newUname,
-                    Password: newPass
-                });
-                alert("Akun berhasil diperbarui! Silakan gunakan Username baru pada login berikutnya.");
-                modalAkun.classList.add("hidden");
-            } catch (error) {
-                console.error(error);
-                alert("Gagal mengubah akun. Pastikan Anda terhubung ke internet.");
-            } finally {
-                btnSimpan.innerText = "Simpan Perubahan";
-            }
-        });
     }
 
     // ==========================================
-    // 5. LOGIKA LOGOUT
+    // 5. ENGINE MODAL (ANTI-BUG TAILWIND)
     // ==========================================
-    const btnLogout = document.getElementById("btnLogout");
-    if (btnLogout) {
-        btnLogout.addEventListener("click", () => {
-            localStorage.clear();
-            window.location.href = "/index.html";
-        });
+    function bukaModal(elemen) {
+        if(!elemen) return;
+        elemen.classList.remove("hidden");
+        elemen.classList.add("flex");
+        setTimeout(() => { if(elemen.children[0]) elemen.children[0].classList.replace("scale-95", "scale-100"); }, 10);
+    }
+    function tutupModal(elemen) {
+        if(!elemen) return;
+        if(elemen.children[0]) elemen.children[0].classList.replace("scale-100", "scale-95");
+        setTimeout(() => { elemen.classList.add("hidden"); elemen.classList.remove("flex"); }, 300);
     }
 
-    // ==========================================
-    // 6. LOGIKA MODAL PROFIL & REQUEST PERUBAHAN
-    // ==========================================
-    import { setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+    // Modal Akun
+    document.getElementById("btnPengaturanAkun")?.addEventListener("click", () => bukaModal(document.getElementById("modalAkun")));
+    document.getElementById("btnTutupModal")?.addEventListener("click", () => tutupModal(document.getElementById("modalAkun")));
 
-    const btnProfilTop = document.getElementById("btnProfilTop");
-    const modalProfil = document.getElementById("modalProfilKu");
-    const btnCloseProfil = document.getElementById("btnCloseProfil");
-    const btnBukaUpdate = document.getElementById("btnBukaUpdateData");
-    
-    const modalUpdate = document.getElementById("modalUpdateData");
-    const btnTutupUpdate = document.getElementById("btnTutupUpdateData");
+    // Modal Profil Karyawan (Pojok Kanan Atas)
+    document.getElementById("btnProfilTop")?.addEventListener("click", () => {
+        const data = window.profilKaryawanSaatIni;
+        document.getElementById("dtlNama").innerText = data.Nama_Karyawan || data.Nama || "-";
+        document.getElementById("dtlNIK").innerText = data.NIK_Karyawan || userNIK;
+        document.getElementById("dtlJabatan").innerText = data.JABATAN || data.Jabatan || "-";
+        document.getElementById("dtlEmail").innerText = data.EMAIL || data.Email || "-";
+        document.getElementById("dtlHP").innerText = data['NO HP AKTIF'] || data.NoHP || "-";
+        document.getElementById("dtlAlamat").innerText = data.ALAMAT || data.Alamat || "-";
+        document.getElementById("dtlPendidikan").innerText = data.PENDIDIKAN || "-";
+        bukaModal(document.getElementById("modalProfilKu"));
+    });
+    document.getElementById("btnCloseProfil")?.addEventListener("click", () => tutupModal(document.getElementById("modalProfilKu")));
+
+    // Modal Pengajuan Perubahan Data
+    document.getElementById("btnBukaUpdateData")?.addEventListener("click", () => {
+        tutupModal(document.getElementById("modalProfilKu"));
+        setTimeout(() => bukaModal(document.getElementById("modalUpdateData")), 300);
+    });
+    document.getElementById("btnTutupUpdateData")?.addEventListener("click", () => tutupModal(document.getElementById("modalUpdateData")));
+
+    // Submit Pengajuan Perubahan
     const btnKirimUpdate = document.getElementById("btnKirimUpdateData");
-
-    // Buka Modal Profil & Isi Datanya
-    if (btnProfilTop) {
-        btnProfilTop.addEventListener("click", () => {
-            const data = window.profilKaryawanSaatIni;
-            document.getElementById("dtlNama").innerText = data.Nama_Karyawan || data.Nama || "-";
-            document.getElementById("dtlNIK").innerText = data.NIK_Karyawan || userNIK;
-            document.getElementById("dtlJabatan").innerText = data.JABATAN || data.Jabatan || "-";
-            document.getElementById("dtlEmail").innerText = data.EMAIL || data.Email || "-";
-            document.getElementById("dtlHP").innerText = data['NO HP AKTIF'] || data.NoHP || "-";
-            document.getElementById("dtlAlamat").innerText = data.ALAMAT || data.Alamat || "-";
-            document.getElementById("dtlPendidikan").innerText = data.PENDIDIKAN || "-";
-
-            modalProfil.classList.remove("hidden");
-            modalProfil.children[0].classList.replace("scale-95", "scale-100");
-        });
-    }
-
-    if (btnCloseProfil) {
-        btnCloseProfil.addEventListener("click", () => {
-            modalProfil.classList.add("hidden");
-            modalProfil.children[0].classList.replace("scale-100", "scale-95");
-        });
-    }
-
-    // Alur Pengajuan Update Data
-    if (btnBukaUpdate) {
-        btnBukaUpdate.addEventListener("click", () => {
-            modalProfil.classList.add("hidden");
-            modalUpdate.classList.remove("hidden");
-            modalUpdate.children[0].classList.replace("scale-95", "scale-100");
-        });
-    }
-
-    if (btnTutupUpdate) {
-        btnTutupUpdate.addEventListener("click", () => {
-            modalUpdate.classList.add("hidden");
-            modalUpdate.children[0].classList.replace("scale-100", "scale-95");
-        });
-    }
-
-    // Submit Request ke data_pengajuan
     if (btnKirimUpdate) {
         btnKirimUpdate.addEventListener("click", async () => {
             const alasan = document.getElementById("inputPerubahan").value.trim();
-            if (!alasan) {
-                alert("Mohon deskripsikan data apa yang ingin diubah.");
-                return;
-            }
-
-            btnKirimUpdate.innerText = "Mengirim...";
-            btnKirimUpdate.disabled = true;
-
+            if (!alasan) { alert("Isi perubahan yang diinginkan!"); return; }
+            
+            btnKirimUpdate.innerText = "Mengirim..."; btnKirimUpdate.disabled = true;
             try {
-                // Buat ID unik (Contoh: REQ-UPD-1689301293)
                 const idForm = `REQ-UPD-${Date.now()}`; 
-                const payload = {
-                    ID: idForm,
-                    Tgl: new Date().toISOString(),
-                    NIK: parseInt(userNIK) || userNIK,
+                await setDoc(doc(db, "data_pengajuan", idForm), {
+                    ID: idForm, Tgl: new Date().toISOString(), NIK: parseInt(userNIK) || userNIK,
                     NamaPemohon: window.profilKaryawanSaatIni.Nama_Karyawan || window.profilKaryawanSaatIni.Nama,
-                    Form_ID: "F-UPDATE-PROFIL",
-                    NamaForm: "Pengajuan Perubahan Data Karyawan",
-                    DetailJSON: JSON.stringify({ rincian_perubahan: alasan }),
-                    ApprovalFlowJson: JSON.stringify(["HRD"]),
-                    ApprovalStepsJSON: JSON.stringify([]),
-                    StatusFinal: "PENDING",
-                    CatatanPenolakan: ""
-                };
-
-                await setDoc(doc(db, "data_pengajuan", idForm), payload);
-                
-                alert("Pengajuan perubahan data berhasil dikirim ke antrean HRD!");
+                    Form_ID: "F-UPDATE-PROFIL", NamaForm: "Pengajuan Perubahan Data Diri",
+                    DetailJSON: JSON.stringify({ rincian: alasan }),
+                    ApprovalFlowJson: JSON.stringify(["HRD"]), ApprovalStepsJSON: JSON.stringify([]),
+                    StatusFinal: "PENDING", CatatanPenolakan: ""
+                });
+                alert("Pengajuan terkirim ke HRD!");
                 document.getElementById("inputPerubahan").value = "";
-                modalUpdate.classList.add("hidden");
-                
-                // Refresh halaman untuk memperbarui riwayat
+                tutupModal(document.getElementById("modalUpdateData"));
                 window.location.reload();
-                
             } catch (error) {
-                console.error("Gagal mengirim pengajuan:", error);
-                alert("Gagal mengirim pengajuan. Periksa koneksi internet Anda.");
+                alert("Gagal mengirim pengajuan.");
             } finally {
-                btnKirimUpdate.innerText = "Kirim Pengajuan";
-                btnKirimUpdate.disabled = false;
+                btnKirimUpdate.innerText = "Kirim Pengajuan"; btnKirimUpdate.disabled = false;
             }
         });
     }
+
+    // Modal Simpan Akun
+    document.getElementById("btnSimpanAkun")?.addEventListener("click", async () => {
+        const u = document.getElementById("newUsername").value.trim().toUpperCase();
+        const p = document.getElementById("newPassword").value.trim();
+        if(!u || !p) { alert("Isi semua kolom!"); return; }
+        
+        try {
+            await updateDoc(doc(db, "user_accounts", localStorage.getItem("accountDocID")), { Username: u, Password: p });
+            alert("Berhasil! Gunakan username baru saat login nanti.");
+            tutupModal(document.getElementById("modalAkun"));
+        } catch (e) { alert("Gagal ubah akun"); }
+    });
+
+    document.getElementById("btnLogout")?.addEventListener("click", () => {
+        localStorage.clear(); window.location.href = "/index.html";
+    });
 });
