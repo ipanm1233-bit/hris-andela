@@ -87,11 +87,22 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.getElementById("profNIK").innerText = data.NIK_Karyawan || data.NIK || userNIK;
             document.getElementById("profCabang").innerText = data.CABANG || data.Cabang || "-";
             
-            // Format Tanggal Join
+            // Format Tanggal Join (Smart Parser untuk Excel Serial Date & String)
             let tglMasuk = data.TANGGAL_JOIN || data.TanggalJoin;
             if(tglMasuk && tglMasuk !== "-" && tglMasuk !== "") {
-                const dateObj = new Date(tglMasuk);
-                // Cek apakah dateObj valid sebelum di-format
+                let dateObj;
+                
+                // 1. Cek apakah formatnya adalah Angka Serial Excel (misal: 45823)
+                if (!isNaN(tglMasuk) && Number(tglMasuk) > 20000) {
+                    // Rumus rahasia konversi Excel ke JS Date (selisih 25569 hari dari tahun 1900 ke 1970)
+                    dateObj = new Date((Number(tglMasuk) - 25569) * 86400 * 1000);
+                } 
+                // 2. Jika formatnya sudah teks tanggal normal ("2025-06-17")
+                else {
+                    dateObj = new Date(tglMasuk);
+                }
+
+                // Render ke layar jika valid
                 if(!isNaN(dateObj)) {
                     document.getElementById("profTglJoin").innerText = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
                 } else {
