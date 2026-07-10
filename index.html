@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRIS & ERP - CV Andela Jaya</title>
+    <!-- Tailwind CSS (Akses langsung tanpa install) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animasi kustom untuk elemen dinamis */
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+
+    <!-- Ornamen Latar Belakang Merah -->
+    <div class="absolute top-0 w-full h-1/2 bg-red-600 rounded-b-3xl shadow-lg z-0"></div>
+
+    <!-- Card Login Dinamis -->
+    <div class="relative z-10 w-full max-w-md bg-white p-8 rounded-2xl shadow-2xl fade-in">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-red-600 tracking-tight">ANDELA<span class="text-gray-800">HRIS</span></h1>
+            <p class="text-sm text-gray-500 mt-2">Sistem Informasi SDM & Operasional</p>
+        </div>
+
+        <!-- Form Input -->
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor Induk Karyawan (NIK)</label>
+                <input type="text" id="inputNIK" placeholder="Contoh: AND-001" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-300">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Email Perusahaan</label>
+                <input type="email" id="inputEmail" placeholder="nama@andelajaya.com" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-300">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Kata Sandi</label>
+                <input type="password" id="inputPassword" placeholder="••••••••" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-300">
+            </div>
+
+            <!-- Tombol Login -->
+            <button id="btnLogin" 
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300">
+                Masuk ke Sistem
+            </button>
+        </div>
+
+        <!-- Feedback Error (Disembunyikan secara default) -->
+        <p id="pesanError" class="mt-4 text-sm text-center text-red-500 font-medium hidden"></p>
+    </div>
+
+    <!-- Memanggil Script Logika -->
+    <script type="module" src="./js/auth.js"></script>
+</body>
+</html>
