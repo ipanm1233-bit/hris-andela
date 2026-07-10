@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    btnToggle.addEventListener('click', toggleSidebar);
+    if(btnToggle) btnToggle.addEventListener('click', toggleSidebar);
     if(overlay) overlay.addEventListener('click', toggleSidebar);
 
 
@@ -48,37 +48,32 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    // ==========================================
-    // LOGIKA SAKTI: HAK AKSES MENU (RBAC)
-    // ==========================================
+    // --- HAK AKSES MENU (RBAC) ---
     const role = (localStorage.getItem("userRole") || "").toUpperCase();
     const jabatan = (localStorage.getItem("userJabatan") || "").toUpperCase();
     const isAtasan = localStorage.getItem("isAtasan") === "YES";
 
-    // Analisa wewenang
     const isHRD = role.includes("HRD") || jabatan.includes("HR");
     const isFinance = role.includes("FINANCE") || role.includes("CASHIER") || jabatan.includes("FINANCE");
     const isManajerial = role.includes("GM") || role.includes("SPV") || jabatan.includes("MANAGER") || jabatan.includes("SUPERVISOR");
 
-    // Eksekusi buka menu
     if (isHRD) {
-        // HRD: Buka semua level
         document.getElementById("menu-manajerial").classList.remove("hidden");
         document.getElementById("menu-hrd").classList.remove("hidden");
     } else if (isFinance || isManajerial || isAtasan) {
-        // Atasan/SPV/Finance: Buka menu manajerial saja
         document.getElementById("menu-manajerial").classList.remove("hidden");
     }
-    // (Jika Karyawan biasa, menu yang tampil hanya 'menu-all' yang memang tidak kita hidden)
 
     try {
-        // --- A. Render Profil Karyawan ---
+        // --- A. Render Profil Karyawan (SINKRONISASI EXCEL) ---
         const docRef = doc(db, "master_karyawan", userNIK);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            const nama = data.Nama || "Tanpa Nama";
+            
+            // Membaca key berdasarkan nama kolom Excel setelah spasi diganti '_'
+            const nama = data.Nama_Karyawan || data.Nama || "Tanpa Nama";
             const inisial = nama.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
             // Render Header Top
@@ -88,48 +83,57 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Render Kartu Profil Kiri
             document.getElementById("profAvatar").innerText = inisial;
             document.getElementById("profNama").innerText = nama;
-            document.getElementById("profJabatan").innerText = data.Jabatan || "-";
-            document.getElementById("profNIK").innerText = data.NIK || userNIK;
-            document.getElementById("profCabang").innerText = data.Cabang || "-";
+            document.getElementById("profJabatan").innerText = data.JABATAN || data.Jabatan || "-";
+            document.getElementById("profNIK").innerText = data.NIK_Karyawan || data.NIK || userNIK;
+            document.getElementById("profCabang").innerText = data.CABANG || data.Cabang || "-";
             
             // Format Tanggal Join
-            if(data.TanggalJoin && data.TanggalJoin !== "-") {
-                const dateObj = new Date(data.TanggalJoin);
-                document.getElementById("profTglJoin").innerText = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            let tglMasuk = data.TANGGAL_JOIN || data.TanggalJoin;
+            if(tglMasuk && tglMasuk !== "-" && tglMasuk !== "") {
+                const dateObj = new Date(tglMasuk);
+                // Cek apakah dateObj valid sebelum di-format
+                if(!isNaN(dateObj)) {
+                    document.getElementById("profTglJoin").innerText = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                } else {
+                    document.getElementById("profTglJoin").innerText = tglMasuk; // Tampilkan mentah jika gagal parsing
+                }
             } else {
                 document.getElementById("profTglJoin").innerText = "-";
             }
             
-            // Sisa Cuti
-            const sisaCuti = (data.SisaCutiTahunan || 0) - (data.TerpakaiTahunan || 0);
-            document.getElementById("profSisaCuti").innerText = sisaCuti;
+            // Sisa Cuti (Membaca kolom jatah_tahunan dan Terpakai_Tahunan)
+            let jatahCuti = parseFloat(data.jatah_tahunan) || parseFloat(data.SisaCutiTahunan) || 0;
+            let terpakai = parseFloat(data.Terpakai_Tahunan) || parseFloat(data.TerpakaiTahunan) || 0;
+            let sisaCuti = jatahCuti - terpakai;
             
+            document.getElementById("profSisaCuti").innerText = sisaCuti;
+        } else {
+            console.warn("Dokumen karyawan tidak ditemukan untuk NIK:", userNIK);
         }
 
-        // --- B. Render Tabel Histori Pengajuan Karyawan Ini ---
+        // --- B. Render Tabel Histori Pengajuan ---
         const tbody = document.getElementById("tableRiwayatBody");
         const reqRef = collection(db, "data_pengajuan");
-        // Query khusus mencari NIK yang sedang login
-        const qHistory = query(reqRef, where("NIK", "==", userNIK));
+        const qHistory = query(reqRef, where("NIK", "==", parseInt(userNIK) || userNIK)); // Handle NIK format number/string
         const historySnap = await getDocs(qHistory);
 
         if (historySnap.empty) {
-            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-6 text-center text-gray-500 italic">Belum ada riwayat pengajuan.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">Belum ada riwayat pengajuan.</td></tr>`;
         } else {
             let trHTML = "";
-            // Simpan ke array untuk di-sort berdasarkan Tanggal (Terbaru ke Terlama)
             let riwayatArr = [];
             historySnap.forEach(doc => riwayatArr.push(doc.data()));
             riwayatArr.sort((a, b) => new Date(b.Tgl) - new Date(a.Tgl));
 
-            // Ambil 5 teratas
             riwayatArr.slice(0, 5).forEach(item => {
                 const dateObj = new Date(item.Tgl);
-                const tglFormat = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                let tglFormat = "-";
+                if(!isNaN(dateObj)) {
+                    tglFormat = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
                 
-                // Styling Badge Status
                 let statusBadge = "";
-                let statusText = item.StatusFinal || "PENDING";
+                let statusText = item['Status Final'] || item.StatusFinal || "PENDING"; // Sesuaikan kolom Data_Pengajuan
                 
                 if (statusText.includes("APPROVED")) {
                     statusBadge = `<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">${statusText}</span>`;
@@ -140,11 +144,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
 
                 trHTML += `
-                    <tr class="hover:bg-gray-50 transition">
+                    <tr class="hover:bg-gray-50 transition border-b border-gray-100">
                         <td class="px-6 py-4 text-gray-600">${tglFormat}</td>
                         <td class="px-6 py-4">
-                            <p class="font-bold text-gray-800">${item.NamaForm}</p>
-                            <p class="text-xs text-gray-400 font-mono mt-0.5">${item.ID}</p>
+                            <p class="font-bold text-gray-800">${item['Nama Form'] || item.NamaForm || "-"}</p>
+                            <p class="text-xs text-gray-400 font-mono mt-0.5">${item.ID || "-"}</p>
                         </td>
                         <td class="px-6 py-4">${statusBadge}</td>
                         <td class="px-6 py-4 text-right">
@@ -158,7 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     } catch (error) {
         console.error("Gagal menarik data:", error);
-        document.getElementById("tableRiwayatBody").innerHTML = `<tr><td colspan="4" class="px-6 py-6 text-center text-red-500">Gagal memuat data. Periksa koneksi internet.</td></tr>`;
+        document.getElementById("tableRiwayatBody").innerHTML = `<tr><td colspan="4" class="px-6 py-6 text-center text-red-500">Gagal memuat riwayat.</td></tr>`;
     }
 
     // ==========================================
@@ -172,60 +176,3 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 });
-
-// ==========================================
-    // 4. LOGIKA PENGATURAN AKUN KARYAWAN
-    // ==========================================
-    import { updateDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-    
-    const btnPengaturan = document.getElementById("btnPengaturanAkun");
-    const modalAkun = document.getElementById("modalAkun");
-    const btnTutup = document.getElementById("btnTutupModal");
-    const btnSimpan = document.getElementById("btnSimpanAkun");
-
-    if(btnPengaturan) {
-        btnPengaturan.addEventListener("click", () => {
-            modalAkun.classList.remove("hidden");
-            modalAkun.children[0].classList.replace("scale-95", "scale-100"); // Efek pop-up
-        });
-    }
-
-    if(btnTutup) {
-        btnTutup.addEventListener("click", () => {
-            modalAkun.classList.add("hidden");
-            modalAkun.children[0].classList.replace("scale-100", "scale-95");
-        });
-    }
-
-    if(btnSimpan) {
-        btnSimpan.addEventListener("click", async () => {
-            const newUname = document.getElementById("newUsername").value.trim().toUpperCase();
-            const newPass = document.getElementById("newPassword").value.trim();
-            const docIDAkun = localStorage.getItem("accountDocID");
-
-            if(!newUname || !newPass) {
-                alert("Semua kolom harus diisi!");
-                return;
-            }
-
-            btnSimpan.innerText = "Menyimpan...";
-            
-            try {
-                // Update dokumen di Firestore
-                const akunRef = doc(db, "user_accounts", docIDAkun);
-                await updateDoc(akunRef, {
-                    Username: newUname,
-                    Password: newPass
-                });
-
-                alert("Akun berhasil diperbarui! Silakan gunakan kredensial baru pada login berikutnya.");
-                modalAkun.classList.add("hidden");
-                btnSimpan.innerText = "Simpan Perubahan";
-                
-            } catch (error) {
-                console.error(error);
-                alert("Gagal mengubah akun. Pastikan Anda terhubung ke internet.");
-                btnSimpan.innerText = "Simpan Perubahan";
-            }
-        });
-    }
