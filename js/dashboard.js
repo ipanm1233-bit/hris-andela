@@ -4,29 +4,46 @@
 function formatTanggalAkurat(tglMentah) {
     if (!tglMentah || tglMentah === "-" || tglMentah === "") return "-";
     
+    // Hapus sisa format jam jika ada (misal dari format ISO/Timestamp)
+    let strTgl = String(tglMentah).split(' ')[0].trim();
     let dateObj;
-    let strTgl = String(tglMentah).split(' ')[0];
     
-    // 1. Cek Angka Serial Excel
-    if (!isNaN(tglMentah) && Number(tglMentah) > 20000) {
-        dateObj = new Date((Number(tglMentah) - 25569) * 86400 * 1000);
-    } else {
-        // 2. Biarkan sistem baca format default Excel (Bulan/Hari/Tahun)
-        dateObj = new Date(strTgl);
+    // A. JIKA BERUPA SERIAL NUMBER EXCEL (Misal: 45231)
+    if (!isNaN(strTgl) && Number(strTgl) > 20000) {
+        dateObj = new Date((Number(strTgl) - 25569) * 86400 * 1000);
+    } 
+    // B. JIKA BERUPA FORMAT TEKS (01/11/2023 atau 01-11-2023)
+    else if (strTgl.includes('/') || strTgl.includes('-')) {
+        let pemisah = strTgl.includes('/') ? '/' : '-';
+        let bagian = strTgl.split(pemisah);
         
-        // 3. Jika Error (Invalid Date), berarti itu format Indonesia (Hari/Bulan), putar urutannya
-        if (isNaN(dateObj) && (strTgl.includes('/') || strTgl.includes('-'))) {
-            let parts = strTgl.split(/[-/]/);
-            if (parts.length === 3) dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+        if (bagian.length === 3) {
+            let hari = parseInt(bagian[0], 10);
+            let bulan = parseInt(bagian[1], 10) - 1; // Bulan JS dimulai dari 0
+            let tahun = parseInt(bagian[2], 10);
+            
+            // Antisipasi jika tahun ditulis 2 digit
+            if (tahun < 100) tahun += 2000;
+            
+            dateObj = new Date(tahun, bulan, hari);
         }
+    } 
+    // C. FALLBACK STANDAR ISO
+    else {
+        dateObj = new Date(strTgl);
     }
 
-    if (!isNaN(dateObj) && dateObj.getFullYear() > 1970) {
-        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    // Eksekusi pemformatan ke Bahasa Indonesia
+    if (dateObj && !isNaN(dateObj.getTime()) && dateObj.getFullYear() > 1970) {
+        return dateObj.toLocaleDateString('id-ID', { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+        });
     }
-    return tglMentah;
+    
+    return tglMentah; // Kembalikan string asli jika gagal total parse
 }
-
 // =======================================================================
 // FIREBASE INITIALIZATION & IMPORTS
 // =======================================================================
@@ -187,13 +204,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Modal Profil Karyawan (Pojok Kanan Atas)
     document.getElementById("btnProfilTop")?.addEventListener("click", () => {
         const data = window.profilKaryawanSaatIni;
+        
+        // Pemetaan data utama ke HTML Modal
         document.getElementById("dtlNama").innerText = data.Nama_Karyawan || data.Nama || "-";
-        document.getElementById("dtlNIK").innerText = data.NIK_Karyawan || userNIK;
+        document.getElementById("dtlNIK").innerText = data.NIK_Karyawan || data.NIK || userNIK;
         document.getElementById("dtlJabatan").innerText = data.JABATAN || data.Jabatan || "-";
+        document.getElementById("dtlCabang").innerText = data.CABANG || data.Cabang || "-";
+        
+        // Format Tanggal Join yang telah diperbaiki akurasinya
+        let tglMasuk = data.TANGGAL_JOIN || data.TanggalJoin || data['Tgl Join'];
+        document.getElementById("dtlTglJoin").innerText = formatTanggalAkurat(tglMasuk);
+        
+        document.getElementById("dtlPendidikan").innerText = data.PENDIDIKAN || data.Pendidikan || "-";
         document.getElementById("dtlEmail").innerText = data.EMAIL || data.Email || "-";
-        document.getElementById("dtlHP").innerText = data['NO HP AKTIF'] || data.NoHP || "-";
+        document.getElementById("dtlHP").innerText = data['NO HP AKTIF'] || data.NoHP || data.No_HP || "-";
+        document.getElementById("dtlAgama").innerText = data.AGAMA || data.Agama || "-";
+        document.getElementById("dtlStatusNikah").innerText = data['STATUS PERNIKAHAN'] || data.StatusNikah || "-";
         document.getElementById("dtlAlamat").innerText = data.ALAMAT || data.Alamat || "-";
-        document.getElementById("dtlPendidikan").innerText = data.PENDIDIKAN || "-";
+        
+        // Data Finansial & Legalitas
+        document.getElementById("dtlRekening").innerText = data['NO REKENING'] || data.NoRekening || "-";
+        document.getElementById("dtlNPWP").innerText = data.NPWP || "-";
+        document.getElementById("dtlBPJS").innerText = data.BPJS || data['NO BPJS'] || "-";
+        
         bukaModal(document.getElementById("modalProfilKu"));
     });
     document.getElementById("btnCloseProfil")?.addEventListener("click", () => tutupModal(document.getElementById("modalProfilKu")));
