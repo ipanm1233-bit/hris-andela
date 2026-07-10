@@ -46,9 +46,15 @@
                 <nav class="flex-1 overflow-y-auto py-2 custom-scrollbar">
                     <div id="menu-all">
                         <div class="px-6 py-3 mt-2"><p class="text-[10px] font-bold text-red-300 uppercase tracking-wider">Akses Umum</p></div>
-                        <a href="#" class="flex items-center px-6 py-3 bg-red-800 border-l-4 border-white font-semibold text-sm"><svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Dashboard</a>
-                        <a href="#" class="flex items-center px-6 py-3 text-red-100 hover:bg-red-600 hover:text-white transition text-sm border-l-4 border-transparent"><svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Buat Pengajuan</a>
-                        <a href="#" class="flex items-center px-6 py-3 text-red-100 hover:bg-red-600 hover:text-white transition text-sm border-l-4 border-transparent"><svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Rekam Jejak 360</a>
+                        <a href="#" class="flex items-center px-6 py-3 bg-red-800 border-l-4 border-white font-semibold text-sm">... Dashboard</a>
+                        
+                        <!-- INI YANG DIUBAH -->
+                        <a href="pengajuan.html" class="flex items-center px-6 py-3 text-red-100 hover:bg-red-600 hover:text-white transition text-sm border-l-4 border-transparent">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> 
+                            Buat Pengajuan
+                        </a>
+                        
+                        <a href="#" class="flex items-center px-6 py-3 text-red-100 hover:bg-red-600 hover:text-white transition text-sm border-l-4 border-transparent">... Rekam Jejak 360</a>
                     </div>
                     <div id="menu-manajerial" class="hidden">
                         <div class="px-6 py-3 mt-2 border-t border-red-800"><p class="text-[10px] font-bold text-red-300 uppercase tracking-wider">Manajerial & Approval</p></div>
@@ -97,28 +103,28 @@
                         Akses Cepat Pengajuan
                     </h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 flex-1">
-                        <button class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-red-400 hover:bg-red-50 hover:shadow-md transition duration-200">
+                        <button onclick="window.location.href='pengajuan.html'" class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-red-400 hover:bg-red-50 hover:shadow-md transition duration-200">
                             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-red-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>
                             <span class="text-sm font-bold text-gray-700">Cuti & Izin</span>
                         </button>
-                        <button class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition duration-200">
+                        <button onclick="window.location.href='pengajuan.html'" class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition duration-200">
                             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-blue-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
                             <span class="text-sm font-bold text-gray-700">Reimbursement</span>
                         </button>
-                        <button class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 hover:shadow-md transition duration-200">
+                        <button onclick="window.location.href='pengajuan.html'" class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 hover:shadow-md transition duration-200">
                             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-green-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></div>
                             <span class="text-sm font-bold text-gray-700">Dinas Luar Kota</span>
                         </button>
-                        <button class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50 hover:shadow-md transition duration-200">
+                        <button onclick="window.location.href='pengajuan.html'" class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50 hover:shadow-md transition duration-200">
                             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-purple-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
                             <span class="text-sm font-bold text-gray-700">Pinjam Aset</span>
                         </button>
-                        <button class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 hover:shadow-md transition duration-200">
+                        <button onclick="window.location.href='pengajuan.html'" class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 hover:shadow-md transition duration-200">
                             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-yellow-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
                             <span class="text-sm font-bold text-gray-700">Slip Gaji</span>
                         </button>
-                        <button class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-100 hover:shadow-md transition duration-200">
-                            <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-gray-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></div>
+                        <button onclick="window.location.href='pengajuan.html'" class="group flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-100 hover:shadow-md transition duration-200">
+                            <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-gray-500 mb-3 shadow-sm group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></div>
                             <span class="text-sm font-bold text-gray-700">Lainnya...</span>
                         </button>
                     </div>
