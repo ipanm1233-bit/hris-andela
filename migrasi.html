@@ -29,9 +29,25 @@
     </div>
 
     <script type="module">
-        import { doc, setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-        import { db } from "./js/firebase-config.js"; // Pastikan path ini benar mengarah ke config Anda
+        // 1. Import semua fungsi dari satu pintu versi yang sama (12.16.0)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+        // 2. Gunakan konfigurasi Anda langsung di sini agar tidak bentrok
+        const firebaseConfig = {
+            apiKey: "AIzaSyAyFFFuXdnTUpxw9wW4uPKwqyeSpZNilRE",
+            authDomain: "andela-hris.firebaseapp.com",
+            projectId: "andela-hris",
+            storageBucket: "andela-hris.firebasestorage.app",
+            messagingSenderId: "504290269212",
+            appId: "1:504290269212:web:830f76268842c38ad267d9"
+        };
+        
+        // 3. Inisialisasi Database
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ================= LOGIKA MIGRASI =================
         const fileUpload = document.getElementById('fileUpload');
         const btnMigrasi = document.getElementById('btnMigrasi');
         const logArea = document.getElementById('logArea');
@@ -43,7 +59,6 @@
             logArea.scrollTop = logArea.scrollHeight;
         }
 
-        // 1. Membaca Excel saat file dipilih
         fileUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if(!file) return;
@@ -53,7 +68,6 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 
-                // Ambil khusus sheet "Master Karyawan"
                 const namaSheet = "Master Karyawan";
                 if(!workbook.SheetNames.includes(namaSheet)) {
                     alert("Sheet Master Karyawan tidak ditemukan!");
@@ -65,7 +79,6 @@
                 
                 cetakLog(`File terbaca! Ditemukan ${excelData.length} baris data karyawan.`);
                 
-                // Aktifkan tombol
                 btnMigrasi.disabled = false;
                 btnMigrasi.classList.remove('bg-gray-400', 'cursor-not-allowed');
                 btnMigrasi.classList.add('bg-red-600', 'hover:bg-red-700', 'cursor-pointer');
@@ -73,7 +86,6 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // 2. Eksekusi Migrasi ke Firebase
         btnMigrasi.addEventListener('click', async () => {
             btnMigrasi.disabled = true;
             btnMigrasi.innerText = "Memproses Migrasi...";
@@ -83,10 +95,8 @@
 
             for (let row of excelData) {
                 try {
-                    // Sanitasi NIK: Pastikan string, hapus spasi & karakter aneh
                     if(!row['NIK_Karyawan']) continue; 
                     
-                    // Terkadang Excel membaca angka besar sebagai eksponensial, kita paksa jadi string presisi
                     let nikMentah = String(row['NIK_Karyawan']).replace(/\D/g, ''); 
                     
                     const payloadKaryawan = {
@@ -101,14 +111,14 @@
                         TerpakaiTahunan: row['Terpakai Tahunan'] ? parseInt(row['Terpakai Tahunan']) : 0
                     };
 
-                    // Push ke Firebase
+                    // Proses Push ke Firestore
                     await setDoc(doc(db, "master_karyawan", nikMentah), payloadKaryawan);
                     cetakLog(`Sukses menyimpan: ${nikMentah} - ${payloadKaryawan.Nama}`);
                     berhasil++;
 
                 } catch (error) {
                     console.error(error);
-                    cetakLog(`<span class="text-red-500">Gagal menyimpan NIK: ${row['NIK_Karyawan']}</span>`);
+                    cetakLog(`<span class="text-red-500">Gagal menyimpan NIK: ${row['NIK_Karyawan']} - Error: ${error.message}</span>`);
                     gagal++;
                 }
             }
