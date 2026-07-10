@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Migrator - CV Andela Jaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6 lg:p-12 font-sans">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div class="bg-red-700 p-6 text-white flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">Pusat Kendali Super Migrasi</h1>
+                <p class="text-red-100 text-sm mt-1">CV Andela Jaya - Excel Data Extraction Tool</p>
+            </div>
+            <span class="bg-red-800 text-xs px-3 py-1.5 rounded-full font-mono">Firestore Engine v12</span>
+        </div>
+
+        <div class="p-6 lg:p-8 space-y-6">
+            <div class="p-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 text-center">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Pilih File Sumber Excel (.xlsx)</label>
+                <input type="file" id="excelFile" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 mx-auto file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"/>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="prosesMigrasi('Master Karyawan')" id="btn-karyawan" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    1. Migrasi Master Karyawan
+                </button>
+                <button onclick="prosesMigrasi('MASTER JATAH CUTI')" id="btn-cuti" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    2. Migrasi Jatah Cuti
+                </button>
+                <button onclick="prosesMigrasi('Data_Pengajuan')" id="btn-pengajuan" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    3. Migrasi Riwayat Pengajuan
+                </button>
+                <button onclick="prosesMigrasi('Form_Configs')" id="btn-config" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    4. Migrasi Skema Katalog Form
+                </button>
+                <button onclick="prosesMigrasi('Master Inventory')" id="btn-inventory" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    5. Migrasi Aset Gudang (Inventory)
+                </button>
+                <button onclick="prosesMigrasi('Master Kendaraan')" id="btn-kendaraan" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    6. Migrasi Aset Armada (Kendaraan)
+                </button>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-bold text-gray-700 mb-2 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span> Terminal Konsol Log
+                </h3>
+                <div id="terminalLog" class="bg-gray-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto shadow-inner">
+                    <p>> Menunggu unggahan file Data_Pengajuan.xlsx...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAyFFFuXdnTUpxw9wW4uPKwqyeSpZNilRE",
+            authDomain: "andela-hris.firebaseapp.com",
+            projectId: "andela-hris",
+            storageBucket: "andela-hris.firebasestorage.app",
+            messagingSenderId: "504290269212",
+            appId: "1:504290269212:web:830f76268842c38ad267d9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentWorkbook = null;
+        const terminalLog = document.getElementById('terminalLog');
+
+        function tulisLog(teks, warna = 'text-green-400') {
+            terminalLog.innerHTML += `<p class="${warna}">> ${teks}</p>`;
+            terminalLog.scrollTop = terminalLog.scrollHeight;
+        }
+
+        // Baca File Excel
+        document.getElementById('excelFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                currentWorkbook = XLSX.read(data, { type: 'array' });
+                
+                tulisLog("File Excel sukses dimuat ke memori browser.", "text-white font-bold");
+                tulisLog(`Daftar sheet terdeteksi: [${currentWorkbook.SheetNames.join(', ')}]`, "text-yellow-300");
+
+                // Aktifkan semua tombol migrasi
+                document.querySelectorAll('.btn-migrasi').forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    btn.classList.add('bg-red-600', 'hover:bg-red-700', 'cursor-pointer');
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Fungsi Eksekusi Global berdasarkan nama Sheet
+        window.prosesMigrasi = async function(namaSheet) {
+            if (!currentWorkbook) return;
+            
+            if (!currentWorkbook.SheetNames.includes(namaSheet)) {
+                tulisLog(`Error: Sheet bernama "${namaSheet}" tidak ditemukan di file ini!`, 'text-red-400');
+                return;
+            }
+
+            tulisLog(`Memulai ekstraksi data dari sheet: ${namaSheet}...`, 'text-white font-bold');
+            const worksheet = currentWorkbook.Sheets[namaSheet];
+            const dataRaw = XLSX.utils.sheet_to_json(worksheet);
+            
+            let sukses = 0;
+            let gagal = 0;
+
+            for (let baris of dataRaw) {
+                try {
+                    // Penanganan sanitasi spasi gaib dan NaN global
+                    const bersihkanObjek = (obj) => {
+                        let res = {};
+                        for (let key in obj) {
+                            if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '#N/A' && obj[key] !== 'NaN') {
+                                res[key.replace(/\s+/g, '_')] = typeof obj[key] === 'string' ? obj[key].trim() : obj[key];
+                            } else {
+                                res[key.replace(/\s+/g, '_')] = "";
+                            }
+                        }
+                        return res;
+                    };
+
+                    const cleanRow = bersihkanObjek(baris);
+
+                    // LOGIKA PER PERANGKAT SHEET TARGET
+                    if (namaSheet === 'Master Karyawan') {
+                        if (!cleanRow.NIK_Karyawan) continue;
+                        let idDoc = String(cleanRow.NIK_Karyawan).replace(/\D/g, '');
+                        await setDoc(doc(db, "master_karyawan", idDoc), cleanRow);
+                        tulisLog(`Saved Karyawan: ${idDoc} - ${cleanRow.Nama_Karyawan}`);
+                    } 
+                    
+                    else if (namaSheet === 'MASTER JATAH CUTI') {
+                        if (!cleanRow.Nama_Karyawan) continue;
+                        // Menggunakan nama yang di-sanitasi ekstrem sebagai ID dokumen jatah
+                        let idDoc = cleanRow.Nama_Karyawan.replace(/\s+/g, '').toUpperCase();
+                        await setDoc(doc(db, "master_jatah_cuti", idDoc), cleanRow);
+                        tulisLog(`Saved Jatah Cuti Karyawan: ${cleanRow.Nama_Karyawan}`);
+                    } 
+                    
+                    else if (namaSheet === 'Data_Pengajuan') {
+                        if (!cleanRow.ID) continue;
+                        let idDoc = String(cleanRow.ID).trim();
+                        await setDoc(doc(db, "data_pengajuan", idDoc), cleanRow);
+                        tulisLog(`Saved Histori Transaksi Form: ${idDoc}`);
+                    } 
+                    
+                    else if (namaSheet === 'Form_Configs') {
+                        if (!cleanRow.ID_Form) continue;
+                        let idDoc = String(cleanRow.ID_Form).trim();
+                        await setDoc(doc(db, "master_form", idDoc), cleanRow);
+                        tulisLog(`Saved JSON Schema Form: ${cleanRow.Nama_Form}`);
+                    }
+                    
+                    else if (namaSheet === 'Master Inventory') {
+                        if (!cleanRow.ID_Item) continue;
+                        let idDoc = String(cleanRow.ID_Item).trim();
+                        await setDoc(doc(db, "master_inventory", idDoc), cleanRow);
+                        tulisLog(`Saved Barang ERP: ${cleanRow.Nama_Barang}`);
+                    }
+                    
+                    else if (namaSheet === 'Master Kendaraan') {
+                        if (!cleanRow.No__Polisi) continue;
+                        let idDoc = String(cleanRow.No__Polisi).replace(/\s+/g, '').toUpperCase();
+                        await setDoc(doc(db, "master_kendaraan", idDoc), cleanRow);
+                        tulisLog(`Saved Armada ERP: ${cleanRow.No__Polisi}`);
+                    }
+
+                    sukses++;
+                } catch (err) {
+                    console.error(err);
+                    tulisLog(`Gagal pada baris data: ${JSON.stringify(baris)} | Error: ${err.message}`, 'text-red-400');
+                    gagal++;
+                }
+            }
+            tulisLog(`PROSES SELESAI UNTUK SHEET ${namaSheet}. Sukses: ${sukses}, Gagal: ${gagal}`, 'text-yellow-400 font-bold');
+        };
+    </script>
+</body>
+</html>
