@@ -46,6 +46,9 @@
                 <button onclick="prosesMigrasi('Users')" id="btn-users" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
                     7. Migrasi Akun Login (Username)
                 </button>
+                <button onclick="prosesMigrasi('Master Cuti')" id="btn-cuti-master" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    8. Migrasi Riwayat Cuti (Master Cuti)
+                </button>
             </div>
 
             <div>
@@ -206,6 +209,13 @@
                         
                         await setDoc(doc(db, "user_accounts", idDoc), payloadAkun);
                         tulisLog(`Saved Akun Login Karyawan: ${payloadAkun.Username}`);
+                    }
+
+                    else if (namaSheet === 'Master Cuti') {
+                        if (!cleanRow.Record_ID_Cuti) continue; // Melewati baris kosong
+                        let idDoc = String(cleanRow.Record_ID_Cuti).replace(/\s+/g, '').toUpperCase();
+                        await setDoc(doc(db, "master_cuti", idDoc), cleanRow);
+                        tulisLog(`Saved Riwayat Cuti: ${cleanRow.Nama_Karyawan} (${cleanRow.Type_Cuti})`);
                     }
 
                     sukses++;
