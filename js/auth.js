@@ -1,3 +1,4 @@
+// js/auth.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
@@ -30,37 +31,42 @@ document.addEventListener("DOMContentLoaded", () => {
         btnLogin.disabled = true;
 
         try {
-            // 1. Cari Username di Koleksi Akun
+            // 1. Cari Akun
             const qAkun = query(collection(db, "user_accounts"), where("Username", "==", username));
             const snapAkun = await getDocs(qAkun);
-
-            if (snapAkun.empty) {
-                throw new Error("Username tidak terdaftar di sistem.");
-            }
+            if (snapAkun.empty) throw new Error("Username tidak terdaftar.");
 
             const dataAkun = snapAkun.docs[0].data();
-            const idDocAkun = snapAkun.docs[0].id; // ID Unik akun
+            const idDocAkun = snapAkun.docs[0].id;
 
-            // 2. Verifikasi Password
-            if (dataAkun.Password !== password) {
-                throw new Error("Kata sandi yang Anda masukkan salah.");
-            }
+            // 2. Cek Password
+            if (dataAkun.Password !== password) throw new Error("Kata sandi salah.");
 
-            // 3. Lacak NIK di Master Karyawan menggunakan Nama Lengkap
+            // 3. Tarik NIK dan Jabatan dari Master Karyawan
             const qKaryawan = query(collection(db, "master_karyawan"), where("Nama_Karyawan", "==", dataAkun.NamaLengkap));
             const snapKaryawan = await getDocs(qKaryawan);
 
             let userNIK = "";
+            let userJabatan = "";
             if (!snapKaryawan.empty) {
-                userNIK = snapKaryawan.docs[0].id; // Mengambil NIK
+                userNIK = snapKaryawan.docs[0].id;
+                userJabatan = snapKaryawan.docs[0].data().Jabatan || "";
             }
 
-            // 4. Simpan Sesi di Memori Browser
-            localStorage.setItem("userNIK", userNIK);
-            localStorage.setItem("accountDocID", idDocAkun); // Penting untuk fitur ubah password nanti
-            localStorage.setItem("userNameLengkap", dataAkun.NamaLengkap);
+            // 4. DETEKSI ATASAN: Cek apakah namanya ada di kolom "ATASAN" milik karyawan lain
+            let isAtasan = false;
+            const qBawahan = query(collection(db, "master_karyawan"), where("ATASAN", "==", dataAkun.NamaLengkap));
+            const snapBawahan = await getDocs(qBawahan);
+            if (!snapBawahan.empty) isAtasan = true;
 
-            // Berhasil, lempar ke Dashboard!
+            // 5. Simpan Sesi
+            localStorage.setItem("userNIK", userNIK);
+            localStorage.setItem("accountDocID", idDocAkun);
+            localStorage.setItem("userNameLengkap", dataAkun.NamaLengkap);
+            localStorage.setItem("userRole", dataAkun.Role || "KARYAWAN");
+            localStorage.setItem("userJabatan", userJabatan);
+            localStorage.setItem("isAtasan", isAtasan ? "YES" : "NO");
+
             window.location.href = "/dashboard.html";
 
         } catch (error) {
