@@ -17,27 +17,21 @@ const db = getFirestore(app);
 document.addEventListener("DOMContentLoaded", async () => {
     
     // ==========================================
-    // 1. LOGIKA UI: SIDEBAR (TOGGLE LEBAR)
+    // 1. LOGIKA UI: SIDEBAR (ANTI-STUCK)
     // ==========================================
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const btnToggle = document.getElementById('btnToggleSidebar');
 
     function toggleSidebar() {
-        // Logika untuk Mobile (di bawah 1024px)
-        if (window.innerWidth < 1024) {
+        if (window.innerWidth >= 1024) {
+            // Logic khusus Desktop (Ubah lebar 64 ke 0)
+            sidebar.classList.toggle('lg:w-64');
+            sidebar.classList.toggle('lg:w-0');
+        } else {
+            // Logic khusus Mobile (Geser posisi keluar layar)
             sidebar.classList.toggle('-translate-x-full');
             overlay.classList.toggle('hidden');
-        } 
-        // Logika untuk Desktop (Sembunyikan ke kiri dengan lebar 0)
-        else {
-            if (sidebar.classList.contains('lg:w-0')) {
-                sidebar.classList.remove('lg:w-0', 'px-0', 'opacity-0');
-                sidebar.classList.add('w-64');
-            } else {
-                sidebar.classList.add('lg:w-0', 'px-0', 'opacity-0');
-                sidebar.classList.remove('w-64');
-            }
         }
     }
 
@@ -45,22 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if(overlay) overlay.addEventListener('click', toggleSidebar);
 
     // ==========================================
-    // 2. LOGIKA UI: SUB-MENU (ACCORDION)
-    // ==========================================
-    const menuToggles = document.querySelectorAll('.menu-toggle');
-    menuToggles.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const submenu = btn.nextElementSibling;
-            const chevron = btn.querySelector('.chevron');
-            
-            submenu.classList.toggle('hidden');
-            submenu.classList.toggle('flex');
-            chevron.classList.toggle('rotate-180');
-        });
-    });
-
-    // ==========================================
-    // 3. LOGIKA DATA: TARIK DATA FIREBASE
+    // 2. LOGIKA DATA: TARIK DATA FIREBASE
     // ==========================================
     const userNIK = localStorage.getItem("userNIK");
 
@@ -80,11 +59,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             
             document.getElementById("userNameDisplay").innerText = namaLengkap;
             
-            // Format Nama Singkat untuk Avatar (Maks 2 huruf)
             const inisial = namaLengkap.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             document.getElementById("userAvatar").innerText = inisial;
             
-            // Sisa Cuti
             const sisaCuti = (dataPegawai.SisaCutiTahunan || 0) - (dataPegawai.TerpakaiTahunan || 0);
             document.getElementById("cutiDisplay").innerText = sisaCuti;
             
@@ -97,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // ==========================================
-    // 4. LOGIKA LOGOUT
+    // 3. LOGIKA LOGOUT
     // ==========================================
     const btnLogout = document.getElementById("btnLogout");
     if(btnLogout) {
