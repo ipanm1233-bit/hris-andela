@@ -193,28 +193,89 @@
     </div>
 
     <div id="modalProfilKu" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform scale-95 transition-transform duration-300">
             <div class="bg-red-700 p-5 text-white flex justify-between items-center">
-                <h3 class="text-lg font-bold flex items-center">Detail Profil Saya</h3>
-                <button id="btnCloseProfil" class="text-red-200 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <h3 class="text-lg font-bold flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Detail Profil Karyawan Pusat
+                </h3>
+                <button id="btnCloseProfil" class="text-red-200 hover:text-white focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
-            <div class="p-6 space-y-4 text-sm bg-gray-50">
-                <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500">Nama Lengkap</span><span id="dtlNama" class="font-bold text-gray-800 text-right">...</span></div>
-                <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500">Nomor Induk (NIK)</span><span id="dtlNIK" class="font-bold text-gray-800 text-right font-mono">...</span></div>
-                <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500">Jabatan</span><span id="dtlJabatan" class="font-bold text-gray-800 text-right">...</span></div>
-                <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500">Email</span><span id="dtlEmail" class="font-bold text-gray-800 text-right">...</span></div>
-                <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500">No. HP</span><span id="dtlHP" class="font-bold text-gray-800 text-right">...</span></div>
-                <div class="flex flex-col border-b border-gray-200 pb-2"><span class="text-gray-500 mb-1">Alamat Tinggal</span><span id="dtlAlamat" class="font-bold text-gray-800">...</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Pendidikan</span><span id="dtlPendidikan" class="font-bold text-gray-800 text-right">...</span></div>
+            
+            <div class="p-6 space-y-3 text-sm bg-gray-50 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Nama Lengkap</span>
+                        <span id="dtlNama" class="font-bold text-gray-800 text-base">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Nomor Induk (NIK)</span>
+                        <span id="dtlNIK" class="font-bold text-gray-800 font-mono text-base">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Jabatan / Posisi</span>
+                        <span id="dtlJabatan" class="font-bold text-gray-800">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Penempatan Cabang</span>
+                        <span id="dtlCabang" class="font-bold text-gray-800">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Tanggal Gabung (Join)</span>
+                        <span id="dtlTglJoin" class="font-bold text-red-700">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Pendidikan Terakhir</span>
+                        <span id="dtlPendidikan" class="font-bold text-gray-800">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Email Perusahaan / Aktif</span>
+                        <span id="dtlEmail" class="font-bold text-gray-800">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">No. Handphone WhatsApp</span>
+                        <span id="dtlHP" class="font-bold text-gray-800">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Agama</span>
+                        <span id="dtlAgama" class="font-bold text-gray-800">-</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Status Pernikahan</span>
+                        <span id="dtlStatusNikah" class="font-bold text-gray-800">-</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm w-full">
+                    <span class="text-xs font-bold text-gray-400 block uppercase mb-0.5">Alamat KTP / Tinggal</span>
+                    <span id="dtlAlamat" class="font-medium text-gray-800 block leading-relaxed">-</span>
+                </div>
+
+                <div class="bg-red-50 p-3 rounded-xl border border-red-100 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <span class="text-[10px] font-bold text-red-400 block uppercase">No. Rekening Bank</span>
+                        <span id="dtlRekening" class="font-bold text-gray-800 font-mono text-xs">-</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold text-red-400 block uppercase">Nomor NPWP</span>
+                        <span id="dtlNPWP" class="font-bold text-gray-800 font-mono text-xs">-</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold text-red-400 block uppercase">Nomor BPJS</span>
+                        <span id="dtlBPJS" class="font-bold text-gray-800 font-mono text-xs">-</span>
+                    </div>
+                </div>
             </div>
+            
             <div class="p-4 bg-white border-t border-gray-200 flex justify-center">
                 <button id="btnBukaUpdateData" class="w-full text-blue-600 bg-blue-50 hover:bg-blue-100 font-bold py-2.5 rounded-lg transition border border-blue-200 text-sm shadow-sm">
-                    Ada data yang salah? Ajukan Perubahan
+                    Ada data yang tidak sesuai? Ajukan Perubahan
                 </button>
             </div>
         </div>
     </div>
-
     <div id="modalUpdateData" class="fixed inset-0 bg-black bg-opacity-70 z-[100] hidden items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg transform scale-95 transition-transform duration-300">
             <h3 class="text-xl font-bold text-gray-800 mb-2 border-b pb-4 flex items-center">Form Request Perubahan Data</h3>
