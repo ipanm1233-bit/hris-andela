@@ -19,6 +19,36 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // =======================================================================
+// FUNGSI HELPER: SMART DATE PARSER (Anti-Error Format Indonesia/Excel)
+// =======================================================================
+function formatTanggalAkurat(tglMentah) {
+    if (!tglMentah || tglMentah === "-" || tglMentah === "") return "-";
+    
+    let dateObj;
+    let strTgl = String(tglMentah).split(' ')[0]; // Buang jam jika ada
+    
+    // 1. Cek Angka Serial Excel (misal: 45231)
+    if (!isNaN(tglMentah) && Number(tglMentah) > 20000) {
+        dateObj = new Date((Number(tglMentah) - 25569) * 86400 * 1000);
+    } 
+    // 2. Format Indonesia DD-MM-YYYY atau DD/MM/YYYY (contoh: 01-11-2023)
+    else if ((strTgl.includes('/') || strTgl.includes('-')) && strTgl.split(/[-/]/)[0].length <= 2) {
+        let parts = strTgl.split(/[-/]/);
+        // Tukar urutan ke standar ISO: YYYY-MM-DD agar JS tidak bingung
+        dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+    } 
+    // 3. Format Normal YYYY-MM-DD
+    else {
+        dateObj = new Date(strTgl);
+    }
+
+    if (!isNaN(dateObj) && dateObj.getFullYear() > 1970) {
+        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    return tglMentah; // Tampilkan teks asli jika gagal
+}
+
+// =======================================================================
 // MAIN DASHBOARD LOGIC
 // =======================================================================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -94,6 +124,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     let namaKaryawan = "Tanpa Nama";
 
     try {
+        // Deklarasi global sementara untuk profil (agar bisa dibaca oleh Modal)
+        window.profilKaryawanSaatIni = {};
+
         // --- A. Render Profil Karyawan (Dari Master Karyawan) ---
         const docRef = doc(db, "master_karyawan", userNIK);
         const docSnap = await getDoc(docRef);
@@ -104,6 +137,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (docSnap.exists()) {
             const data = docSnap.data();
+            
+            // Simpan data ke variabel global agar bisa ditarik saat profil diklik
+            window.profilKaryawanSaatIni = data; 
+            
             namaKaryawan = data.Nama_Karyawan || data.Nama || "Tanpa Nama";
             const inisial = namaKaryawan.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
@@ -118,25 +155,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             if(document.getElementById("profNIK")) document.getElementById("profNIK").innerText = data.NIK_Karyawan || data.NIK || userNIK;
             if(document.getElementById("profCabang")) document.getElementById("profCabang").innerText = data.CABANG || data.Cabang || "-";
             
-            // Format Tanggal Join (Smart Parser Excel)
-            let tglMasuk = data.TANGGAL_JOIN || data.TanggalJoin;
-            if (tglMasuk && tglMasuk !== "-" && tglMasuk !== "") {
-                let dateObj;
-                if (!isNaN(tglMasuk) && Number(tglMasuk) > 20000) {
-                    dateObj = new Date((Number(tglMasuk) - 25569) * 86400 * 1000);
-                } else {
-                    dateObj = new Date(tglMasuk);
-                }
-                if(document.getElementById("profTglJoin")) {
-                    document.getElementById("profTglJoin").innerText = !isNaN(dateObj) ? dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : tglMasuk;
-                }
-            } else {
-                if(document.getElementById("profTglJoin")) document.getElementById("profTglJoin").innerText = "-";
+            // Format Tanggal Join MENGGUNAKAN SMART PARSER BARU
+            let tglMasuk = data.TANGGAL_JOIN || data.TanggalJoin || data['Tgl Join'];
+            if(document.getElementById("profTglJoin")) {
+                document.getElementById("profTglJoin").innerText = formatTanggalAkurat(tglMasuk);
             }
 
             // Simpan Jatah Cuti Awal
             jatahTahunan = parseFloat(data.jatah_tahunan) || parseFloat(data.SisaCutiTahunan) || 0;
-            jatahKhusus = parseFloat(data.jatah_khusus) || 0;
+            jatahKhusus = parseFloat(data.jatah_khusus) || parseFloat(data.jatah_Cuti_Khusus) || 0;
             jatahAkumulasi = parseFloat(data.jatah_akumulasi) || 0;
             
         } else {
@@ -301,6 +328,108 @@ document.addEventListener("DOMContentLoaded", async () => {
         btnLogout.addEventListener("click", () => {
             localStorage.clear();
             window.location.href = "/index.html";
+        });
+    }
+
+    // ==========================================
+    // 6. LOGIKA MODAL PROFIL & REQUEST PERUBAHAN
+    // ==========================================
+    import { setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+    const btnProfilTop = document.getElementById("btnProfilTop");
+    const modalProfil = document.getElementById("modalProfilKu");
+    const btnCloseProfil = document.getElementById("btnCloseProfil");
+    const btnBukaUpdate = document.getElementById("btnBukaUpdateData");
+    
+    const modalUpdate = document.getElementById("modalUpdateData");
+    const btnTutupUpdate = document.getElementById("btnTutupUpdateData");
+    const btnKirimUpdate = document.getElementById("btnKirimUpdateData");
+
+    // Buka Modal Profil & Isi Datanya
+    if (btnProfilTop) {
+        btnProfilTop.addEventListener("click", () => {
+            const data = window.profilKaryawanSaatIni;
+            document.getElementById("dtlNama").innerText = data.Nama_Karyawan || data.Nama || "-";
+            document.getElementById("dtlNIK").innerText = data.NIK_Karyawan || userNIK;
+            document.getElementById("dtlJabatan").innerText = data.JABATAN || data.Jabatan || "-";
+            document.getElementById("dtlEmail").innerText = data.EMAIL || data.Email || "-";
+            document.getElementById("dtlHP").innerText = data['NO HP AKTIF'] || data.NoHP || "-";
+            document.getElementById("dtlAlamat").innerText = data.ALAMAT || data.Alamat || "-";
+            document.getElementById("dtlPendidikan").innerText = data.PENDIDIKAN || "-";
+
+            modalProfil.classList.remove("hidden");
+            modalProfil.children[0].classList.replace("scale-95", "scale-100");
+        });
+    }
+
+    if (btnCloseProfil) {
+        btnCloseProfil.addEventListener("click", () => {
+            modalProfil.classList.add("hidden");
+            modalProfil.children[0].classList.replace("scale-100", "scale-95");
+        });
+    }
+
+    // Alur Pengajuan Update Data
+    if (btnBukaUpdate) {
+        btnBukaUpdate.addEventListener("click", () => {
+            modalProfil.classList.add("hidden");
+            modalUpdate.classList.remove("hidden");
+            modalUpdate.children[0].classList.replace("scale-95", "scale-100");
+        });
+    }
+
+    if (btnTutupUpdate) {
+        btnTutupUpdate.addEventListener("click", () => {
+            modalUpdate.classList.add("hidden");
+            modalUpdate.children[0].classList.replace("scale-100", "scale-95");
+        });
+    }
+
+    // Submit Request ke data_pengajuan
+    if (btnKirimUpdate) {
+        btnKirimUpdate.addEventListener("click", async () => {
+            const alasan = document.getElementById("inputPerubahan").value.trim();
+            if (!alasan) {
+                alert("Mohon deskripsikan data apa yang ingin diubah.");
+                return;
+            }
+
+            btnKirimUpdate.innerText = "Mengirim...";
+            btnKirimUpdate.disabled = true;
+
+            try {
+                // Buat ID unik (Contoh: REQ-UPD-1689301293)
+                const idForm = `REQ-UPD-${Date.now()}`; 
+                const payload = {
+                    ID: idForm,
+                    Tgl: new Date().toISOString(),
+                    NIK: parseInt(userNIK) || userNIK,
+                    NamaPemohon: window.profilKaryawanSaatIni.Nama_Karyawan || window.profilKaryawanSaatIni.Nama,
+                    Form_ID: "F-UPDATE-PROFIL",
+                    NamaForm: "Pengajuan Perubahan Data Karyawan",
+                    DetailJSON: JSON.stringify({ rincian_perubahan: alasan }),
+                    ApprovalFlowJson: JSON.stringify(["HRD"]),
+                    ApprovalStepsJSON: JSON.stringify([]),
+                    StatusFinal: "PENDING",
+                    CatatanPenolakan: ""
+                };
+
+                await setDoc(doc(db, "data_pengajuan", idForm), payload);
+                
+                alert("Pengajuan perubahan data berhasil dikirim ke antrean HRD!");
+                document.getElementById("inputPerubahan").value = "";
+                modalUpdate.classList.add("hidden");
+                
+                // Refresh halaman untuk memperbarui riwayat
+                window.location.reload();
+                
+            } catch (error) {
+                console.error("Gagal mengirim pengajuan:", error);
+                alert("Gagal mengirim pengajuan. Periksa koneksi internet Anda.");
+            } finally {
+                btnKirimUpdate.innerText = "Kirim Pengajuan";
+                btnKirimUpdate.disabled = false;
+            }
         });
     }
 });
