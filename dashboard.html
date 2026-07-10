@@ -8,45 +8,84 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased text-gray-800 flex h-screen overflow-hidden">
 
-    <!-- Overlay Gelap untuk HP saat Sidebar terbuka -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden lg:hidden transition-opacity"></div>
+    <!-- Overlay Gelap (Hanya muncul di HP saat Sidebar terbuka) -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden transition-opacity lg:hidden"></div>
 
-    <!-- Sidebar (Profesional, bisa di-hide) -->
-    <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col absolute inset-y-0 left-0 transform -translate-x-full lg:relative lg:translate-x-0 z-30 transition-transform duration-300 ease-in-out shadow-xl lg:shadow-none">
+    <!-- SIDEBAR -->
+    <!-- Default: Tersembunyi (-translate-x-full), di Desktop (lg) dipaksa muncul (lg:translate-x-0) -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out -translate-x-full lg:translate-x-0 shadow-xl lg:shadow-none">
         
         <!-- Logo Area -->
         <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-red-700 text-white">
             <h1 class="text-xl font-extrabold tracking-wider">ANDELA<span class="text-red-200">HRIS</span></h1>
-            <!-- Tombol Tutup (Hanya muncul di HP) -->
-            <button id="btnCloseSidebar" class="lg:hidden text-white hover:text-gray-200 focus:outline-none">
+            <!-- Tombol Tutup (Hanya di HP) -->
+            <button id="btnCloseSidebarMobile" class="lg:hidden text-white hover:text-gray-200 focus:outline-none">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
 
-        <!-- Navigasi dengan SVG Icons -->
-        <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <!-- AREA NAVIGASI (Dengan sistem Dropdown) -->
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+            
+            <!-- Menu Single -->
             <a href="#" class="flex items-center px-4 py-3 bg-red-50 text-red-700 rounded-lg font-semibold transition">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 Dashboard
             </a>
-            <a href="#" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group">
-                <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                Pengajuan Form
-            </a>
-            <a href="#" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group">
-                <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                Data Karyawan
-            </a>
-            <a href="#" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group">
-                <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Penilaian KPI
-            </a>
-            <a href="#" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group">
-                <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                Inventory ERP
-            </a>
+
+            <!-- Menu Grup 1: Transaksi & Pengajuan -->
+            <div>
+                <button class="menu-toggle flex w-full items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group focus:outline-none">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Pengajuan & Form</span>
+                    </div>
+                    <svg class="chevron w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <!-- Sub Menu -->
+                <div class="submenu hidden flex-col pl-11 pr-4 py-2 space-y-2 text-sm text-gray-500">
+                    <a href="#" class="hover:text-red-600 transition">Ajukan Cuti / Izin</a>
+                    <a href="#" class="hover:text-red-600 transition">Reimbursement</a>
+                    <a href="#" class="hover:text-red-600 transition">Approval Atasan</a>
+                </div>
+            </div>
+
+            <!-- Menu Grup 2: Data Master -->
+            <div>
+                <button class="menu-toggle flex w-full items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group focus:outline-none">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <span>Data Master</span>
+                    </div>
+                    <svg class="chevron w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="submenu hidden flex-col pl-11 pr-4 py-2 space-y-2 text-sm text-gray-500">
+                    <a href="#" class="hover:text-red-600 transition">Master Karyawan</a>
+                    <a href="#" class="hover:text-red-600 transition">Database Kontrak</a>
+                    <a href="#" class="hover:text-red-600 transition">Struktur Organisasi</a>
+                </div>
+            </div>
+
+            <!-- Menu Grup 3: Penilaian & KPI -->
+            <div>
+                <button class="menu-toggle flex w-full items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-red-700 rounded-lg transition group focus:outline-none">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        <span>Evaluasi & KPI</span>
+                    </div>
+                    <svg class="chevron w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="submenu hidden flex-col pl-11 pr-4 py-2 space-y-2 text-sm text-gray-500">
+                    <a href="#" class="hover:text-red-600 transition">Isi Penilaian (360)</a>
+                    <a href="#" class="hover:text-red-600 transition">Raport Karyawan</a>
+                </div>
+            </div>
+
+            <!-- Tambahkan menu-menu lain di bawah ini di masa depan -->
+
         </nav>
         
+        <!-- Tombol Keluar -->
         <div class="p-4 border-t border-gray-100">
             <button id="btnLogout" class="w-full flex items-center justify-center px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition font-medium">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -55,14 +94,14 @@
         </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col h-screen overflow-y-auto bg-gray-50">
+    <!-- AREA KONTEN UTAMA (Bergeser jika sidebar ditutup) -->
+    <main id="mainContent" class="flex-1 flex flex-col h-screen overflow-y-auto bg-gray-50 transition-all duration-300 lg:ml-64 w-full">
         
-        <!-- Header (Putih) -->
+        <!-- Header Atas (Sekarang tombol humberger muncul di desktop juga) -->
         <header class="h-16 bg-white shadow-sm flex items-center justify-between px-4 lg:px-8 border-b border-gray-200">
             <div class="flex items-center">
-                <!-- Hamburger Menu untuk HP -->
-                <button id="btnOpenSidebar" class="mr-4 lg:hidden text-gray-600 focus:outline-none">
+                <!-- Tombol Toggle Sidebar Universal -->
+                <button id="btnToggleSidebar" class="mr-4 text-gray-600 hover:text-red-600 focus:outline-none transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
                 <h2 class="text-xl font-semibold text-gray-800">Ringkasan Operasional</h2>
@@ -73,17 +112,13 @@
                     <p class="text-xs text-gray-500">Selamat datang,</p>
                     <p id="userNameDisplay" class="text-sm font-bold text-gray-700">Memuat...</p>
                 </div>
-                <!-- Avatar Initial -->
-                <div id="userAvatar" class="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center font-bold shadow-sm">
-                    ?
-                </div>
+                <div id="userAvatar" class="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center font-bold shadow-sm">?</div>
             </div>
         </header>
 
-        <!-- Dashboard Widgets -->
+        <!-- Widgets Data -->
         <div class="p-4 lg:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            <!-- Widget 1: Sisa Cuti -->
+            <!-- Widget Cuti -->
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-gray-500 text-sm font-medium">Sisa Cuti Tahunan</h3>
@@ -95,7 +130,7 @@
                 <p class="text-xs text-gray-400 mt-1">Hari tersedia tahun ini</p>
             </div>
 
-            <!-- Widget 2: Pengumuman -->
+            <!-- Widget Pengumuman -->
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-gray-500 text-sm font-medium">Pengumuman Terbaru</h3>
@@ -106,22 +141,10 @@
                 <p class="text-lg font-bold text-gray-800 line-clamp-1">SOP Reimbursement Baru</p>
                 <p class="text-xs text-gray-400 mt-1">Diterbitkan oleh HRD</p>
             </div>
-
-            <!-- Widget 3: Status Kontrak -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-gray-500 text-sm font-medium">Status Kontrak Anda</h3>
-                    <div class="p-2 bg-green-50 text-green-600 rounded-lg">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                </div>
-                <p id="kontrakDisplay" class="text-lg font-bold text-gray-800">Aman</p>
-                <p class="text-xs text-gray-400 mt-1">Masih lebih dari 45 Hari</p>
-            </div>
         </div>
     </main>
 
-    <!-- Memanggil file Script -->
+    <!-- Panggil Javascript Utama -->
     <script type="module" src="./js/dashboard.js"></script>
 </body>
 </html>
