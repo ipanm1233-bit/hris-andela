@@ -43,6 +43,9 @@
                 <button onclick="prosesMigrasi('Master Kendaraan')" id="btn-kendaraan" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
                     6. Migrasi Aset Armada (Kendaraan)
                 </button>
+                <button onclick="prosesMigrasi('Users')" id="btn-users" class="btn-migrasi bg-gray-400 text-white font-bold py-3 px-4 rounded transition cursor-not-allowed" disabled>
+                    7. Migrasi Akun Login (Username)
+                </button>
             </div>
 
             <div>
@@ -174,10 +177,35 @@
                     }
                     
                     else if (namaSheet === 'Master Kendaraan') {
-                        if (!cleanRow.No__Polisi) continue;
-                        let idDoc = String(cleanRow.No__Polisi).replace(/\s+/g, '').toUpperCase();
+                        // FIX: Menggunakan 'No._Polisi' (titik dan garis bawah)
+                        if (!cleanRow['No._Polisi']) continue; 
+                        let idDoc = String(cleanRow['No._Polisi']).replace(/\s+/g, '').toUpperCase();
                         await setDoc(doc(db, "master_kendaraan", idDoc), cleanRow);
-                        tulisLog(`Saved Armada ERP: ${cleanRow.No__Polisi}`);
+                        tulisLog(`Saved Armada ERP: ${idDoc}`);
+                    }
+
+                    // LOGIKA BARU: MIGRASI AKUN LOGIN (USERNAME & PASSWORD)
+                    else if (namaSheet === 'Users') {
+                        if (!cleanRow.Username) continue;
+                        
+                        // Pastikan password tidak dibaca sebagai desimal oleh Excel (misal: 310393.0)
+                        let rawPassword = cleanRow.Password;
+                        if (typeof rawPassword === 'number') {
+                            rawPassword = rawPassword.toString().replace('.0', '');
+                        }
+                    
+                        // Kita gunakan Nama (tanpa spasi) sebagai ID Dokumen agar stabil saat username diganti
+                        let idDoc = String(cleanRow.Nama).replace(/\s+/g, '').toUpperCase();
+                    
+                        const payloadAkun = {
+                            Username: String(cleanRow.Username).toUpperCase(),
+                            Password: String(rawPassword),
+                            NamaLengkap: cleanRow.Nama || "-",
+                            Role: cleanRow.Role || "KARYAWAN"
+                        };
+                        
+                        await setDoc(doc(db, "user_accounts", idDoc), payloadAkun);
+                        tulisLog(`Saved Akun Login Karyawan: ${payloadAkun.Username}`);
                     }
 
                     sukses++;
