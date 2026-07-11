@@ -1,242 +1,358 @@
 // js/views/form-builder.js
-import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
-(async function runFormBuilder() {
-    const db = getFirestore();
+const db = getFirestore();
 
-    // Pastikan elemen DOM benar-benar sudah siap sedia di layar
-    const listContainer = document.getElementById('formListContainer');
-    if (!listContainer) return;
+// State management
+let currentFormId = null;
+let formsList = [];
+let approvalFlow = [];
+let fieldsList = [];
 
-    let currentFormId = null;
-    let formsList = [];
-    let approvalFlow = [];
-    let fieldsList = [];
+// DOM Elements
+const formListContainer = document.getElementById('formListContainer');
+const configContainer = document.getElementById('configContainer');
+const btnNewForm = document.getElementById('btnNewForm');
+const btnInitForm = document.getElementById('btnInitForm');
+const btnSaveConfig = document.getElementById('btnSaveConfig');
+const btnDeleteForm = document.getElementById('btnDeleteForm');
+const btnAddApproval = document.getElementById('btnAddApproval');
+const approvalFlowRender = document.getElementById('approvalFlowRender');
+const btnAddField = document.getElementById('btnAddField');
+const fieldsContainer = document.getElementById('fieldsContainer');
 
-    const elements = {
-        formList: listContainer,
-        configBox: document.getElementById('configContainer'),
-        btnNew: document.getElementById('btnNewForm'),
-        btnInit: document.getElementById('btnInitForm'),
-        btnSave: document.getElementById('btnSaveConfig'),
-        btnDel: document.getElementById('btnDeleteForm'),
-        btnAddAppr: document.getElementById('btnAddApproval'),
-        flowRender: document.getElementById('approvalFlowRender'),
-        btnAddField: document.getElementById('btnAddField'),
-        fieldsBox: document.getElementById('fieldsContainer'),
-        nameInput: document.getElementById('cfgNamaForm'),
-        idInput: document.getElementById('cfgIdForm'),
-        typeInput: document.getElementById('cfgTipeForm'),
-        tembusanInput: document.getElementById('cfgTembusan'),
-        dateDisplay: document.getElementById('builderDateDisplay')
+// UI Init
+const optionsDate = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+document.getElementById("builderDateDisplay").innerText = new Date().toLocaleDateString('id-ID', optionsDate);
+
+// The extensive list of input types from your screenshot
+const inputTypes = [
+    { value: "text", label: "Teks Singkat" },
+    { value: "textarea", label: "Teks Panjang" },
+    { value: "number", label: "Angka" },
+    { value: "date", label: "Tanggal" },
+    { value: "time", label: "Jam" },
+    { value: "select", label: "Dropdown" },
+    { value: "file", label: "Upload Dokumen" },
+    { value: "employee", label: "Pilih Karyawan" },
+    { value: "vehicle", label: "Pilih Kendaraan" },
+    { value: "asset", label: "Pilih Barang Aset" },
+    { value: "table", label: "Tabel Multi-Baris (Klaim)" },
+    { value: "period", label: "Dropdown Periode Otomatis" },
+    { value: "multi_text", label: "Multi-Input: Teks" },
+    { value: "multi_number", label: "Multi-Input: Angka / Nominal" },
+    { value: "multi_date", label: "Multi-Input: Tanggal" },
+    { value: "multi_employee", label: "Multi-Input: Pilih Karyawan" }
+];
+
+// --- 1. Fetch & Render Form List ---
+async function fetchForms() {
+    formListContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs italic">Memuat...</div>';
+    try {
+        const querySnapshot = await getDocs(collection(db, "master_form"));
+        formsList = [];
+        querySnapshot.forEach((doc) => {
+            formsList.push({ id: doc.id, ...doc.data() });
+        });
+        renderFormList();
+    } catch (error) {
+        console.error("Error fetching forms:", error);
+        formListContainer.innerHTML = '<div class="p-4 text-center text-red-500 text-xs">Gagal memuat data.</div>';
+    }
+}
+
+function renderFormList() {
+    formListContainer.innerHTML = '';
+    if (formsList.length === 0) {
+        formListContainer.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs italic">Belum ada form.</div>';
+        return;
+    }
+
+    formsList.forEach(form => {
+        const name = form.Nama_Form || form.ID_Form || 'Undefined Form';
+        const item = document.createElement('div');
+        // Styling matches your sidebar screenshot
+        item.className = `p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition ${currentFormId === form.id ? 'border-l-4 border-l-red-600 bg-red-50 font-bold text-red-700' : 'text-gray-700 font-medium'}`;
+        item.innerHTML = `<p class="text-sm truncate">${name}</p>`;
+        item.onclick = () => loadFormConfig(form.id);
+        formListContainer.appendChild(item);
+    });
+}
+
+// --- 2. Load Form Configuration ---
+async function loadFormConfig(id) {
+    currentFormId = id;
+    renderFormList(); // Update active styling
+    configContainer.classList.remove('hidden');
+    btnDeleteForm.classList.remove('hidden');
+
+    const form = formsList.find(f => f.id === id);
+    if (!form) return;
+
+    // Populate Basic Info
+    document.getElementById('cfgNamaForm').value = form.Nama_Form || '';
+    document.getElementById('cfgIdForm').value = form.ID_Form || form.id || '';
+    document.getElementById('cfgIdForm').readOnly = true; // Don't allow changing ID of existing form easily
+    document.getElementById('cfgTipeForm').value = form.Tipe_Form || '';
+    
+    // Parse Approval Flow
+    try {
+        approvalFlow = typeof form.ApprovalFlowJson === 'string' ? JSON.parse(form.ApprovalFlowJson) : (form.ApprovalFlowJson || []);
+    } catch(e) { approvalFlow = []; }
+    renderApprovalFlow();
+
+    // Parse Fields (DetailJSON)
+    try {
+        let rawFields = form.DetailJSON;
+        if(typeof rawFields === 'string') rawFields = JSON.parse(rawFields);
+        fieldsList = Array.isArray(rawFields) ? rawFields : [];
+    } catch(e) { fieldsList = []; }
+    renderFields();
+}
+
+// --- 3. New Form Logic ---
+function initNewForm() {
+    currentFormId = null;
+    renderFormList(); // Clear active styling
+    configContainer.classList.remove('hidden');
+    btnDeleteForm.classList.add('hidden');
+
+    document.getElementById('cfgNamaForm').value = '';
+    document.getElementById('cfgIdForm').value = `F-${Date.now().toString().slice(-6)}`;
+    document.getElementById('cfgIdForm').readOnly = false;
+    document.getElementById('cfgTipeForm').value = '';
+    
+    approvalFlow = [];
+    renderApprovalFlow();
+    
+    fieldsList = [];
+    renderFields();
+}
+
+btnNewForm.addEventListener('click', initNewForm);
+btnInitForm.addEventListener('click', initNewForm);
+
+// --- 4. Approval Flow Builder ---
+function renderApprovalFlow() {
+    approvalFlowRender.innerHTML = '';
+    if (approvalFlow.length === 0) {
+        approvalFlowRender.innerHTML = '<span class="text-xs italic text-gray-400">Tidak membutuhkan persetujuan (Auto-Approve)</span>';
+        return;
+    }
+
+    approvalFlow.forEach((role, index) => {
+        const node = document.createElement('div');
+        node.className = 'flex items-center';
+        node.innerHTML = `
+            <div class="bg-white border border-gray-300 px-3 py-1.5 rounded-lg shadow-sm flex items-center text-sm font-bold text-gray-700">
+                <span class="text-gray-400 mr-2 text-xs">${index + 1}.</span> ${role}
+                <button type="button" class="ml-2 text-gray-400 hover:text-red-500" onclick="removeApprovalNode(${index})">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            ${index < approvalFlow.length - 1 ? '<svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>' : ''}
+        `;
+        approvalFlowRender.appendChild(node);
+    });
+}
+
+window.removeApprovalNode = (index) => {
+    approvalFlow.splice(index, 1);
+    renderApprovalFlow();
+};
+
+btnAddApproval.addEventListener('click', () => {
+    const role = document.getElementById('addRoleSelect').value;
+    approvalFlow.push(role);
+    renderApprovalFlow();
+});
+
+// --- 5. Field Builder (The complex part) ---
+function createFieldHTML(field, index) {
+    const safeId = field.id || field.label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    
+    // Generate Options Dropdown
+    let typeOptions = '';
+    inputTypes.forEach(t => {
+        const selected = t.value === field.type ? 'selected' : '';
+        typeOptions += `<option value="${t.value}" ${selected}>${t.label}</option>`;
+    });
+
+    return `
+        <div class="field-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group mb-4" data-index="${index}">
+            <div class="flex gap-4 items-start mb-3">
+                <div class="flex-1">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Label / Pertanyaan</label>
+                    <input type="text" class="f-label w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-red-500" value="${field.label || ''}" placeholder="Contoh: Alasan">
+                </div>
+                <div class="w-48">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipe Jawaban</label>
+                    <select class="f-type w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-red-500 bg-white">
+                        ${typeOptions}
+                    </select>
+                </div>
+                <div class="flex items-center mt-6">
+                    <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                        <input type="checkbox" class="f-req w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 mr-2" ${field.required ? 'checked' : ''}>
+                        Wajib
+                    </label>
+                </div>
+                <button type="button" class="mt-6 ml-2 text-gray-400 hover:text-red-600 transition" onclick="removeField(${index})">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+            
+            <p class="text-[10px] text-gray-400 font-mono mb-3">ID Unik: [${safeId}]</p>
+
+            <!-- Extra Config based on type (Options/Logic) -->
+            ${['select', 'period'].includes(field.type) ? `
+                <div class="mt-3 bg-gray-50 p-3 rounded border border-gray-200">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Opsi (Pisahkan dengan koma)</label>
+                    <input type="text" class="f-options w-full px-3 py-2 border border-gray-300 rounded text-sm" value="${(field.options || []).join(', ')}" placeholder="Opsi 1, Opsi 2, Opsi 3">
+                </div>
+            ` : ''}
+
+            <!-- Advanced Logic Section (From your screenshot 2) -->
+            <div class="mt-4 border border-orange-200 bg-orange-50/30 rounded-lg p-4">
+                <p class="text-[10px] font-bold text-orange-600 uppercase mb-3 flex items-center">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Logika Dinamis & Kalkulasi Otomatis
+                </p>
+                <div class="grid grid-cols-2 gap-4 mb-3">
+                    <div>
+                        <label class="block text-[9px] font-bold text-gray-500 mb-1">Munculkan jika field berikut:</label>
+                        <input type="text" class="f-show-if w-full px-3 py-1.5 border border-gray-300 rounded text-xs bg-white" placeholder="Ketik ID Unik (Cth: akomodasi)" value="${field.logic_show_if || ''}">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-bold text-gray-500 mb-1">Bernilai:</label>
+                        <input type="text" class="f-show-val w-full px-3 py-1.5 border border-gray-300 rounded text-xs bg-white" placeholder="Cth: Hotel" value="${field.logic_show_val || ''}">
+                    </div>
+                </div>
+                <div>
+                     <label class="block text-[9px] font-bold text-gray-500 mb-1">Rumus Otomatis (Gunakan tanda [] untuk ID Unik)</label>
+                     <input type="text" class="f-calc w-full px-3 py-1.5 border border-green-200 rounded text-xs bg-green-50/50 text-green-800" placeholder="Cth: ([km_akhir] - [km_awal]) * (10000/25)" value="${field.logic_calc || ''}">
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderFields() {
+    fieldsContainer.innerHTML = '';
+    if (fieldsList.length === 0) {
+        fieldsContainer.innerHTML = '<p class="text-center text-gray-400 text-sm italic py-4">Belum ada kolom isian. Klik "+ Tambah Field".</p>';
+        return;
+    }
+    
+    fieldsList.forEach((field, index) => {
+        fieldsContainer.insertAdjacentHTML('beforeend', createFieldHTML(field, index));
+    });
+
+    // Attach event listeners for type changes to re-render that specific field block
+    document.querySelectorAll('.f-type').forEach(select => {
+        select.addEventListener('change', (e) => {
+            syncFieldsListFromDOM(); // Save current state
+            const index = e.target.closest('.field-item').dataset.index;
+            fieldsList[index].type = e.target.value;
+            renderFields(); // Re-render to show/hide options input
+        });
+    });
+}
+
+// Sync DOM values back to fieldsList array before saving or re-rendering
+function syncFieldsListFromDOM() {
+    const items = document.querySelectorAll('.field-item');
+    let newFieldsList = [];
+    items.forEach((item) => {
+        const label = item.querySelector('.f-label').value;
+        const type = item.querySelector('.f-type').value;
+        const required = item.querySelector('.f-req').checked;
+        
+        let fieldData = { label, type, required };
+        fieldData.id = label.toLowerCase().replace(/[^a-z0-9]/g, '_'); // Auto generate ID
+        
+        const optionsInput = item.querySelector('.f-options');
+        if(optionsInput) {
+            fieldData.options = optionsInput.value.split(',').map(s => s.trim()).filter(s => s);
+        }
+
+        // Advanced logic sync
+        fieldData.logic_show_if = item.querySelector('.f-show-if').value;
+        fieldData.logic_show_val = item.querySelector('.f-show-val').value;
+        fieldData.logic_calc = item.querySelector('.f-calc').value;
+
+        newFieldsList.push(fieldData);
+    });
+    fieldsList = newFieldsList;
+}
+
+window.removeField = (index) => {
+    syncFieldsListFromDOM();
+    fieldsList.splice(index, 1);
+    renderFields();
+};
+
+btnAddField.addEventListener('click', () => {
+    syncFieldsListFromDOM();
+    fieldsList.push({ label: 'Pertanyaan Baru', type: 'text', required: false });
+    renderFields();
+});
+
+
+// --- 6. Save Configuration ---
+btnSaveConfig.addEventListener('click', async () => {
+    syncFieldsListFromDOM();
+    
+    const namaForm = document.getElementById('cfgNamaForm').value.trim();
+    const idForm = document.getElementById('cfgIdForm').value.trim().toUpperCase();
+    const tipeForm = document.getElementById('cfgTipeForm').value.trim().toUpperCase();
+
+    if (!namaForm || !idForm) {
+        alert("Nama Form dan ID Form wajib diisi!");
+        return;
+    }
+
+    btnSaveConfig.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Menyimpan...';
+    btnSaveConfig.disabled = true;
+
+    const payload = {
+        ID_Form: idForm,
+        Nama_Form: namaForm,
+        Tipe_Form: tipeForm,
+        ApprovalFlowJson: JSON.stringify(approvalFlow),
+        DetailJSON: JSON.stringify(fieldsList),
+        isActive: true
+        // Note: Tembusan & Role allow list need dedicated DB fields if you want them functional in routing.
     };
 
-    if(elements.dateDisplay) {
-        elements.dateDisplay.innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    try {
+        await setDoc(doc(db, "master_form", idForm), payload);
+        alert("Konfigurasi Form berhasil disimpan!");
+        await fetchForms(); // Refresh list
+        loadFormConfig(idForm); // Reload saved config
+    } catch (error) {
+        console.error("Error saving form:", error);
+        alert("Gagal menyimpan form. Periksa koneksi.");
+    } finally {
+        btnSaveConfig.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> Simpan Konfigurasi';
+        btnSaveConfig.disabled = false;
     }
+});
 
-    const inputTypes = [
-        { value: "text", label: "Teks Singkat" },
-        { value: "textarea", label: "Teks Panjang" },
-        { value: "number", label: "Angka / Nominal" },
-        { value: "date", label: "Tanggal" },
-        { value: "time", label: "Jam / Waktu" },
-        { value: "select", label: "Dropdown Pilihan" },
-        { value: "file", label: "Upload Bukti Dokumen" }
-    ];
+// --- 7. Delete Form ---
+btnDeleteForm.addEventListener('click', async () => {
+    if(!currentFormId) return;
+    if(!confirm("Anda yakin ingin menghapus formulir ini secara permanen?")) return;
 
-    async function fetchForms() {
-        elements.formList.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs italic">Memuat daftar...</div>';
-        try {
-            const snap = await getDocs(collection(db, "master_form"));
-            formsList = [];
-            snap.forEach(doc => formsList.push({ id: doc.id, ...doc.data() }));
-            renderList();
-        } catch (e) {
-            elements.formList.innerHTML = '<div class="p-4 text-center text-red-500 text-xs font-bold">Gagal memuat.</div>';
-        }
+    try {
+        await deleteDoc(doc(db, "master_form", currentFormId));
+        alert("Formulir berhasil dihapus.");
+        initNewForm(); // Reset UI
+        fetchForms(); // Refresh list
+    } catch(error) {
+        alert("Gagal menghapus formulir.");
     }
+});
 
-    function renderList() {
-        elements.formList.innerHTML = '';
-        if (formsList.length === 0) {
-            elements.formList.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs italic">Belum ada form terdaftar.</div>';
-            return;
-        }
-        formsList.forEach(form => {
-            const item = document.createElement('div');
-            item.className = `p-3.5 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-all ${currentFormId === form.id ? 'border-l-4 border-l-red-600 bg-red-50/70 font-extrabold text-red-700' : 'text-gray-700 text-sm font-medium'}`;
-            item.innerHTML = `<p class="truncate tracking-tight">${form.Nama_Form || form.ID_Form}</p>`;
-            item.onclick = () => loadConfig(form.id);
-            elements.formList.appendChild(item);
-        });
-    }
-
-    function loadConfig(id) {
-        currentFormId = id;
-        renderList();
-        elements.configBox.classList.remove('hidden');
-        elements.btnDel.classList.remove('hidden');
-
-        const form = formsList.find(f => f.id === id);
-        if(!form) return;
-
-        elements.nameInput.value = form.Nama_Form || '';
-        elements.idInput.value = form.ID_Form || form.id || '';
-        elements.idInput.readOnly = true;
-        elements.typeInput.value = form.Tipe_Form || '';
-        elements.tembusanInput.value = form.TembusanEmail || '';
-
-        try { approvalFlow = typeof form.ApprovalFlowJson === 'string' ? JSON.parse(form.ApprovalFlowJson) : (form.ApprovalFlowJson||[]); } catch(e){ approvalFlow=[]; }
-        renderFlow();
-
-        try { 
-            let r = form.DetailJSON; 
-            if(typeof r === 'string') r = JSON.parse(r); 
-            fieldsList = Array.isArray(r) ? r : []; 
-        } catch(e){ fieldsList=[]; }
-        renderFields();
-    }
-
-    function newForm() {
-        currentFormId = null;
-        renderList();
-        elements.configBox.classList.remove('hidden');
-        elements.btnDel.classList.add('hidden');
-        elements.nameInput.value = '';
-        elements.idInput.value = `F-ISO-${Date.now().toString().slice(-4)}`;
-        elements.idInput.readOnly = false;
-        elements.typeInput.value = '';
-        elements.tembusanInput.value = '';
-        approvalFlow = []; renderFlow();
-        fieldsList = []; renderFields();
-    }
-
-    elements.btnNew.addEventListener('click', newForm);
-    elements.btnInit.addEventListener('click', newForm);
-
-    function renderFlow() {
-        elements.flowRender.innerHTML = '';
-        if(approvalFlow.length === 0) { elements.flowRender.innerHTML = '<span class="text-xs italic text-gray-400">Persetujuan Kosong (Auto-Approve)</span>'; return; }
-        
-        approvalFlow.forEach((role, i) => {
-            const node = document.createElement('div');
-            node.className = 'flex items-center shrink-0';
-            node.innerHTML = `
-                <div class="bg-white border border-gray-300 px-3 py-2 rounded-xl shadow-sm text-xs font-bold text-gray-700 flex items-center">
-                    <span class="text-red-600 font-mono mr-1.5">${i+1}.</span> ${role} 
-                    <button class="ml-2 text-gray-400 hover:text-red-600 font-bold remove-flow" data-index="${i}">×</button>
-                </div>
-                ${i < approvalFlow.length-1 ? '<span class="mx-1.5 text-gray-400 font-bold">➔</span>' : ''}
-            `;
-            elements.flowRender.appendChild(node);
-        });
-
-        document.querySelectorAll('.remove-flow').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                approvalFlow.splice(e.target.dataset.index, 1);
-                renderFlow();
-            });
-        });
-    }
-
-    elements.btnAddAppr.addEventListener('click', () => {
-        approvalFlow.push(document.getElementById('addRoleSelect').value);
-        renderFlow();
-    });
-
-    function renderFields() {
-        elements.fieldsBox.innerHTML = '';
-        if(fieldsList.length === 0) { elements.fieldsBox.innerHTML = '<p class="text-center text-gray-400 text-sm py-6 italic bg-white rounded-xl border">Belum ada kolom isian dibuat. Klik "+ Tambah Field Baru".</p>'; return; }
-
-        fieldsList.forEach((field, i) => {
-            let opts = '';
-            inputTypes.forEach(t => opts += `<option value="${t.value}" ${t.value===field.type?'selected':''}>${t.label}</option>`);
-
-            const html = `
-            <div class="field-item bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mb-4 relative" data-index="${i}">
-                <div class="flex flex-col sm:flex-row gap-4 items-end">
-                    <div class="flex-1 w-full">
-                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pertanyaan / Label Input</label>
-                        <input type="text" class="f-label w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-1 focus:ring-red-500 font-bold text-gray-700" value="${field.label||''}" placeholder="Contoh: Alasan Cuti">
-                    </div>
-                    <div class="w-full sm:w-48">
-                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tipe Input</label>
-                        <select class="f-type w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white font-semibold text-gray-700">${opts}</select>
-                    </div>
-                    <div class="flex items-center h-10 shrink-0">
-                        <label class="text-sm font-bold text-gray-600 cursor-pointer flex items-center"><input type="checkbox" class="f-req mr-1.5 w-4 h-4 rounded text-red-600 focus:ring-red-500" ${field.required?'checked':''}>Wajib Diisi</label>
-                    </div>
-                    <button class="text-red-500 hover:text-red-700 font-bold text-sm h-10 shrink-0 px-2 remove-field" data-index="${i}">Hapus</button>
-                </div>
-                ${field.type === 'select' ? `
-                <div class="mt-3 bg-red-50/30 p-3 rounded-xl border border-red-100">
-                    <label class="block text-[9px] font-bold text-red-500 uppercase mb-1">Opsi Dropdown (Pisahkan Dengan Koma)</label>
-                    <input type="text" class="f-opts w-full px-4 py-2 border border-gray-300 rounded-xl text-xs bg-white" value="${(field.options||[]).join(', ')}" placeholder="Contoh: Pilihan A, Pilihan B, Pilihan C">
-                </div>` : ''}
-            </div>`;
-            elements.fieldsBox.insertAdjacentHTML('beforeend', html);
-        });
-
-        document.querySelectorAll('.remove-field').forEach(btn => btn.addEventListener('click', (e) => {
-            syncFields(); fieldsList.splice(e.target.dataset.index, 1); renderFields();
-        }));
-        document.querySelectorAll('.f-type').forEach(sel => sel.addEventListener('change', () => {
-            syncFields(); renderFields();
-        }));
-    }
-
-    function syncFields() {
-        fieldsList = [];
-        document.querySelectorAll('.field-item').forEach(item => {
-            const type = item.querySelector('.f-type').value;
-            let fieldObj = {
-                label: item.querySelector('.f-label').value,
-                type: type,
-                required: item.querySelector('.f-req').checked,
-                id: item.querySelector('.f-label').value.toLowerCase().replace(/[^a-z0-9]/g, '_')
-            };
-            if(type === 'select') {
-                const optInput = item.querySelector('.f-opts');
-                if(optInput) fieldObj.options = optInput.value.split(',').map(s=>s.trim()).filter(s=>s);
-            }
-            fieldsList.push(fieldObj);
-        });
-    }
-
-    elements.btnAddField.addEventListener('click', () => { syncFields(); fieldsList.push({label:'Pertanyaan Baru', type:'text', required:false}); renderFields(); });
-
-    elements.btnSave.addEventListener('click', async () => {
-        syncFields();
-        const idForm = elements.idInput.value.trim().toUpperCase();
-        if(!idForm || !elements.nameInput.value.trim()) { alert("ID Form dan Nama Form wajib diisi!"); return; }
-
-        elements.btnSave.innerText = "Sedang Menyimpan...";
-        try {
-            await setDoc(doc(db, "master_form", idForm), {
-                ID_Form: idForm,
-                Nama_Form: elements.nameInput.value.trim(),
-                Tipe_Form: elements.typeInput.value.trim().toUpperCase(),
-                TembusanEmail: elements.tembusanInput.value.trim(),
-                ApprovalFlowJson: JSON.stringify(approvalFlow),
-                DetailJSON: JSON.stringify(fieldsList),
-                isActive: true
-            });
-            alert("Konfigurasi Form ISO Berhasil Disimpan!");
-            fetchForms();
-        } catch(e) { alert("Gagal menyimpan ke database."); }
-        elements.btnSave.innerText = "Simpan Semua Konfigurasi";
-    });
-
-    elements.btnDel.addEventListener('click', async () => {
-        if(!currentFormId) return;
-        if(!confirm("Hapus form ini secara permanen dari sistem?")) return;
-        try {
-            await deleteDoc(doc(db, "master_form", currentFormId));
-            alert("Form Terhapus!");
-            newForm(); fetchForms();
-        } catch(e) { alert("Gagal"); }
-    });
-
-    fetchForms();
-})();
+// Initial Fetch
+fetchForms();
